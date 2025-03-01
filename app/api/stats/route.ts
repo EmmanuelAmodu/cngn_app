@@ -4,21 +4,21 @@ import { supabaseAdmin } from "@/lib/supabase"
 export async function GET() {
   try {
     // Get deposits data with count
-    const { data: deposits, count: depositCount, error: depositsError } = await supabaseAdmin
+    const { count: depositCount, error: depositsError } = await supabaseAdmin
       .from("deposits")
-      .select("*", { count: 'exact', head: true })
+      .select("amount", { count: 'exact', head: true })
 
     if (depositsError) throw depositsError
 
     // Get withdrawals data with count
-    const { data: withdrawals, count: withdrawalCount, error: withdrawalsError } = await supabaseAdmin
+    const { count: withdrawalCount, error: withdrawalsError } = await supabaseAdmin
       .from("withdrawals")
       .select("*", { count: 'exact', head: true })
 
     if (withdrawalsError) throw withdrawalsError
 
     // Get bridges data with count
-    const { data: bridges, count: bridgeCount, error: bridgesError } = await supabaseAdmin
+    const { count: bridgeCount, error: bridgesError } = await supabaseAdmin
       .from("bridges")
       .select("*", { count: 'exact', head: true })
 

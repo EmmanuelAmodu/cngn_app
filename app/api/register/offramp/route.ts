@@ -1,0 +1,36 @@
+import { NextResponse } from "next/server"
+import { supabaseAdmin } from "@/lib/supabase"
+import { randomUUID } from "crypto"
+
+export async function POST(request: Request) {
+  try {
+    const { userAddress, bankAccount } = await request.json()
+
+    if (!userAddress || !bankAccount) {
+      return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
+    }
+
+    const offRampId = randomUUID()
+
+    const { error, data: offramp } = await supabaseAdmin
+      .from("offramps")
+      .insert({
+        offramp_id: offRampId,
+        user_address: userAddress,
+        bank_account: bankAccount,
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return NextResponse.json({
+      success: true,
+      offRampId: offramp.offramp_id,
+    })
+  } catch (error) {
+    console.error("Error in offramp registration:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+

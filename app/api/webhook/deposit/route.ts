@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
 import { publicClient, getWalletClient, CONTRACT_ADDRESS, contractABI } from "@/lib/blockchain"
 import type { Address } from "viem"
+import { mainnet } from "viem/chains"
 
 export async function POST(request: Request) {
   try {
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
     }
 
     // Validate amount
-    if (typeof amount !== "string" || isNaN(Number(amount)) || Number(amount) <= 0) {
+    if (typeof amount !== "string" || Number.isNaN(Number(amount)) || Number(amount) <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
     }
 
@@ -70,12 +71,18 @@ export async function POST(request: Request) {
       // Convert amount to BigInt with proper decimal places (18 decimals for ERC20)
       const amountInWei = BigInt(Number(amount) * 10 ** 18)
 
+      if (!walletClient.account) {
+        throw new Error("Wallet client account not initialized")
+      }
+
       // Execute deposit transaction
       const txHash = await walletClient.writeContract({
         address: CONTRACT_ADDRESS,
         abi: contractABI,
+        account: walletClient.account,
         functionName: "deposit",
         args: [userAddress as Address, amountInWei, onrampId as `0x${string}`],
+        chain: mainnet,
       })
 
       console.log("Transaction submitted:", txHash)
@@ -88,22 +95,22 @@ export async function POST(request: Request) {
         depositId: deposit.id,
         txHash,
       })
-    } catch (error: any) {
+    } catch (error) {
       console.error("Deposit transaction failed:", error)
       return NextResponse.json(
         {
           error: "Deposit transaction failed",
-          details: error.message,
+          details: (error as { message: unknown }).message,
         },
         { status: 500 },
       )
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error in deposit webhook:", error)
     return NextResponse.json(
       {
         error: "Internal server error",
-        details: error.message,
+        details: (error as { message: unknown }).message,
       },
       { status: 500 },
     )

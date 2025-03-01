@@ -1,20 +1,11 @@
+import { chainConfigs } from "@/chainConfigs"
 import { createWalletClient, http } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
-import { mainnet, polygon, arbitrum, optimism, base } from "viem/chains"
 
 interface CrossChainTransferResult {
   success: boolean
   txHash: string
   message: string
-}
-
-// Map chain IDs to their configurations
-const chainConfigs = {
-  1: { chain: mainnet, name: "Ethereum" },
-  137: { chain: polygon, name: "Polygon" },
-  42161: { chain: arbitrum, name: "Arbitrum" },
-  10: { chain: optimism, name: "Optimism" },
-  8453: { chain: base, name: "Base" },
 }
 
 export async function sendCNGNOnDestinationChain(
@@ -75,9 +66,8 @@ export async function sendCNGNOnDestinationChain(
       txHash: txHash,
       message: `Successfully transferred on ${chainConfig.name}`,
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("Cross-chain transfer error:", error)
-    throw new Error(error.message || "Failed to transfer on destination chain")
+    throw new Error((error as { message: string }).message || "Failed to transfer on destination chain")
   }
 }
-

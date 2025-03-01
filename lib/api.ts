@@ -402,4 +402,3 @@ export const checkWithdrawalStatus = async (withdrawalId: string): Promise<Withd
     throw new Error((error as {message: string}).message || "Failed to check withdrawal status")
   }
 }
-

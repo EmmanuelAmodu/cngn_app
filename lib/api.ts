@@ -99,9 +99,9 @@ export const generateVirtualAccountAPI = async (amount: string): Promise<Virtual
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
       },
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error generating virtual account:", error)
-    throw new Error(error.message || "Failed to generate virtual account")
+    throw new Error((error as {message: string}).message || "Failed to generate virtual account")
   }
 }
 
@@ -146,9 +146,9 @@ export const confirmDepositAPI = async (
       status: true,
       message: "Payment confirmed successfully",
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error confirming deposit:", error)
-    throw new Error(error.message || "Failed to confirm deposit")
+    throw new Error((error as {message: string}).message || "Failed to confirm deposit")
   }
 }
 
@@ -181,9 +181,9 @@ export const verifyBankAccountAPI = async (
         isValid: true,
       },
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error verifying bank account:", error)
-    throw new Error(error.message || "Failed to verify bank account")
+    throw new Error((error as {message: string}).message || "Failed to verify bank account")
   }
 }
 
@@ -224,9 +224,9 @@ export const initiateOfframpAPI = async (
         amount,
       },
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error initiating offramp:", error)
-    throw new Error(error.message || "Failed to initiate offramp")
+    throw new Error((error as {message: string}).message || "Failed to initiate offramp")
   }
 }
 
@@ -265,9 +265,9 @@ export const initiateBridgeAPI = async (
         reference: data.bridgeId,
       },
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error initiating bridge:", error)
-    throw new Error(error.message || "Failed to initiate bridge")
+    throw new Error((error as {message: string}).message || "Failed to initiate bridge")
   }
 }
 
@@ -297,9 +297,9 @@ export const checkBridgeStatusAPI = async (reference: string): Promise<BridgeSta
         reference: reference,
       },
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error checking bridge status:", error)
-    throw new Error(error.message || "Failed to check bridge status")
+    throw new Error((error as {message: string}).message || "Failed to check bridge status")
   }
 }
 
@@ -324,9 +324,9 @@ export const getSupportedChainsAPI = async (): Promise<
     }
 
     return await response.json()
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error getting supported chains:", error)
-    throw new Error(error.message || "Failed to get supported chains")
+    throw new Error((error as {message: string}).message || "Failed to get supported chains")
   }
 }
 
@@ -350,9 +350,9 @@ export const getSupportedBanksAPI = async (): Promise<
     }
 
     return await response.json()
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error getting supported banks:", error)
-    throw new Error(error.message || "Failed to get supported banks")
+    throw new Error((error as {message: string}).message || "Failed to get supported banks")
   }
 }
 
@@ -376,9 +376,9 @@ export const getTransactionStats = async (): Promise<{
     }
 
     return await response.json()
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error getting transaction stats:", error)
-    throw new Error(error.message || "Failed to get transaction stats")
+    throw new Error((error as {message: string}).message || "Failed to get transaction stats")
   }
 }
 
@@ -397,9 +397,9 @@ export const checkWithdrawalStatus = async (withdrawalId: string): Promise<Withd
     }
 
     return await response.json()
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error checking withdrawal status:", error)
-    throw new Error(error.message || "Failed to check withdrawal status")
+    throw new Error((error as {message: string}).message || "Failed to check withdrawal status")
   }
 }
 

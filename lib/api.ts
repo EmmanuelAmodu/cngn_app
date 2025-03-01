@@ -118,7 +118,7 @@ export const confirmDepositAPI = async (
       throw new Error("No wallet address found")
     }
 
-    const response = await fetch("/api/webhook/deposit", {
+    const response = await fetch("/api/deposit", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

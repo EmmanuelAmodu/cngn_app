@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
-import { randomUUID } from "crypto"
+import { randomBytes } from "crypto"
 
 export async function POST(request: Request) {
   try {
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
     }
 
-    const bridgeId = randomUUID()
+    const bridgeId = `0x${randomBytes(32).toString("hex")}`
 
     const { error } = await supabase.from("bridges").insert({
       id: bridgeId,

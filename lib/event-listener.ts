@@ -134,6 +134,11 @@ export async function startEventListeners() {
 
         const { user, amount, destinationChainId } = args
 
+        if (!user || !amount || !destinationChainId) {
+          console.error("Invalid bridge event arguments")
+          continue
+        }
+
         try {
           // Insert bridge record
           const { data: bridge, error } = await supabaseAdmin

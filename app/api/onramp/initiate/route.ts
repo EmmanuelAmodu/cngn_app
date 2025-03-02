@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields: userAddress and amount" }, { status: 400 })
     }
 
-    if (typeof amount !== "string" || isNaN(Number(amount)) || Number(amount) <= 0) {
+    if (typeof amount !== "string" || Number.isNaN(Number(amount)) || Number(amount) <= 0) {
       return NextResponse.json({ error: "Invalid amount provided" }, { status: 400 })
     }
 

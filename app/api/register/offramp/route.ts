@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
-import { randomUUID } from "crypto"
+import { randomBytes } from "crypto"
 
 export async function POST(request: Request) {
   try {
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
     }
 
-    const offRampId = randomUUID()
+    const offRampId = `0x${randomBytes(32).toString("hex")}`
 
     const { error, data: offramp } = await supabaseAdmin
       .from("offramps")

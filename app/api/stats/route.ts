@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server"
-import { supabaseAdmin } from "@/lib/supabase"
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export async function GET() {
   try {
@@ -7,6 +7,7 @@ export async function GET() {
     const { count: depositCount, error: depositsError } = await supabaseAdmin
       .from("deposits")
       .select("amount", { count: 'exact', head: true })
+      .eq("status", "completed")
 
     if (depositsError) throw depositsError
 
@@ -14,6 +15,7 @@ export async function GET() {
     const { count: withdrawalCount, error: withdrawalsError } = await supabaseAdmin
       .from("withdrawals")
       .select("*", { count: 'exact', head: true })
+      .eq("status", "completed")
 
     if (withdrawalsError) throw withdrawalsError
 
@@ -21,6 +23,7 @@ export async function GET() {
     const { count: bridgeCount, error: bridgesError } = await supabaseAdmin
       .from("bridges")
       .select("*", { count: 'exact', head: true })
+      .eq("status", "completed")
 
     if (bridgesError) throw bridgesError
 
@@ -28,25 +31,31 @@ export async function GET() {
     const { data: depositSum, error: depositSumError } = await supabaseAdmin
       .from("deposits")
       .select("amount")
+      .eq("status", "completed")
 
     if (depositSumError) throw depositSumError
 
     const { data: withdrawalSum, error: withdrawalSumError } = await supabaseAdmin
       .from("withdrawals")
       .select("amount")
+      .eq("status", "completed")
 
     if (withdrawalSumError) throw withdrawalSumError
 
     const { data: bridgeSum, error: bridgeSumError } = await supabaseAdmin
       .from("bridges")
       .select("amount")
+      .eq("status", "completed")
 
     if (bridgeSumError) throw bridgeSumError
 
     // Calculate totals
-    const onrampVolume = depositSum?.reduce((sum, d) => sum + (d.amount || 0), 0) || 0
-    const offrampVolume = withdrawalSum?.reduce((sum, w) => sum + (w.amount || 0), 0) || 0
-    const bridgeVolume = bridgeSum?.reduce((sum, b) => sum + (b.amount || 0), 0) || 0
+    const onrampVolume =
+      depositSum?.reduce((sum, d) => sum + (d.amount || 0), 0) || 0;
+    const offrampVolume =
+      withdrawalSum?.reduce((sum, w) => sum + (w.amount || 0), 0) || 0;
+    const bridgeVolume =
+      bridgeSum?.reduce((sum, b) => sum + (b.amount || 0), 0) || 0;
     const totalTransactions = (depositCount || 0) + (withdrawalCount || 0) + (bridgeCount || 0)
 
     return NextResponse.json({
@@ -54,10 +63,12 @@ export async function GET() {
       offrampVolume: offrampVolume.toString(),
       bridgeVolume: bridgeVolume.toString(),
       totalTransactions,
-    })
+    });
   } catch (error) {
-    console.error("Error getting transaction stats:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Error getting transaction stats:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
-

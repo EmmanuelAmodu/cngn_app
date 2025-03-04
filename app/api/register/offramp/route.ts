@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       .insert({
         offramp_id: offRampId,
         user_address: userAddress,
-        bank_account: bankAccount,
+        bank_account: bankAccount, // This now contains the full bank details including phone number
       })
       .select()
       .single()

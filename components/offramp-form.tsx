@@ -72,7 +72,7 @@ export default function OfframpForm({ address, chainId }: OfframpFormProps) {
 
   // Handle account number verification
   const handleVerifyAccount = async () => {
-    if (!bankDetails.accountNumber || !bankDetails.bankName) {
+    if (!bankDetails.accountNumber || !bankDetails.bankCode) {
       setError("Please enter account number and select bank")
       return
     }
@@ -81,7 +81,7 @@ export default function OfframpForm({ address, chainId }: OfframpFormProps) {
     setIsVerifying(true)
 
     try {
-      const result = await verifyBankAccount(bankDetails.accountNumber, bankDetails.bankName)
+      const result = await verifyBankAccount(bankDetails.accountNumber, bankDetails.bankCode)
 
       if (result.isValid) {
         setBankDetails((prev) => ({

@@ -45,6 +45,16 @@ export interface BridgeStatusResponse {
 }
 
 // Add to your existing types
+export interface VirtualAccountRequest {
+  amount: string
+  userAddress: string
+  firstName: string
+  lastName: string
+  email: string
+  mobileNumber: string
+}
+
+// Add to your existing types
 export interface WithdrawalStatus {
   id: string
   status: "pending" | "processing" | "completed" | "failed"
@@ -54,54 +64,76 @@ export interface WithdrawalStatus {
   updatedAt: string
 }
 
-// Generate virtual account for onramp
-export const generateVirtualAccountAPI = async (amount: string): Promise<VirtualAccountResponse> => {
+// Add to your existing types
+export interface FundTransferResponse {
+  status: boolean
+  message: string
+  data: {
+    transferReference: string[]
+  }
+}
+
+// Update the generateVirtualAccountAPI function
+export const generateVirtualAccountAPI = async (data: VirtualAccountRequest): Promise<VirtualAccountResponse> => {
   try {
-    if (!window.ethereum?.selectedAddress) {
-      throw new Error("No wallet address found")
-    }
+    console.log("Calling generateVirtualAccountAPI with data:", {
+      amount: data.amount,
+      userAddress: data.userAddress,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      mobileNumber: data.mobileNumber ? "REDACTED" : "MISSING",
+    })
 
     const response = await fetch("/api/onramp/initiate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        userAddress: window.ethereum.selectedAddress,
-        amount,
-      }),
+      body: JSON.stringify(data),
     })
 
+    const responseText = await response.text()
+    console.log(`API response status: ${response.status}`)
+
+    let responseData
+    try {
+      responseData = JSON.parse(responseText)
+    } catch (e) {
+      console.error("Failed to parse API response:", responseText)
+      throw new Error(`Server error: Failed to generate virtual account. Response: ${responseText}`)
+    }
+
     if (!response.ok) {
-      const errorText = await response.text()
-      try {
-        const errorJson = JSON.parse(errorText)
-        throw new Error(errorJson.error || "Failed to generate virtual account")
-      } catch (e) {
-        throw new Error("Server error: Failed to generate virtual account")
-      }
+      console.error("API error:", responseData)
+      throw new Error(responseData.error || responseData.details || "Failed to generate virtual account")
     }
 
-    const data = await response.json()
-
-    if (!data.success) {
-      throw new Error(data.error || "Failed to generate virtual account")
+    if (!responseData.success) {
+      console.error("API returned failure:", responseData)
+      throw new Error(responseData.error || "Failed to generate virtual account")
     }
+
+    console.log("Virtual account generated successfully:", {
+      accountNumber: responseData.virtualAccount,
+      bankName: responseData.bankName,
+      accountName: responseData.accountName,
+    })
 
     return {
       status: true,
       message: "Virtual account generated successfully",
       data: {
-        accountNumber: data.virtualAccount,
-        bankName: data.bankName,
-        accountName: data.accountName,
-        reference: data.onrampId,
+        accountNumber: responseData.virtualAccount,
+        bankName: responseData.bankName,
+        accountName: responseData.accountName,
+        reference: responseData.reference,
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
       },
     }
   } catch (error) {
     console.error("Error generating virtual account:", error)
-    throw new Error((error as {message: string}).message || "Failed to generate virtual account")
+    throw error
   }
 }
 
@@ -148,14 +180,15 @@ export const confirmDepositAPI = async (
     }
   } catch (error) {
     console.error("Error confirming deposit:", error)
-    throw new Error((error as {message: string}).message || "Failed to confirm deposit")
+    throw new Error((error as { message: string }).message || "Failed to confirm deposit")
   }
 }
 
-// Verify bank account for offramp
+// Update the verifyBankAccountAPI function
 export const verifyBankAccountAPI = async (
   accountNumber: string,
-  bankName: string,
+  bankCode: string,
+  amount?: number,
 ): Promise<BankVerificationResponse> => {
   try {
     const response = await fetch("/api/verify/bank-account", {
@@ -163,37 +196,50 @@ export const verifyBankAccountAPI = async (
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ accountNumber, bankName }),
+      body: JSON.stringify({
+        accountNumber,
+        bankCode,
+        amount: amount || 1000.0, // Use provided amount or default to 1000
+      }),
     })
 
     if (!response.ok) {
-      throw new Error("Failed to verify bank account")
+      const errorData = await response.json()
+      throw new Error(errorData.error || "Failed to verify bank account")
     }
 
     const data = await response.json()
+
+    if (!data.status) {
+      throw new Error(data.message || "Failed to verify bank account")
+    }
+
     return {
       status: true,
       message: "Account verified successfully",
       data: {
-        accountNumber: data.accountNumber,
-        accountName: data.accountName,
-        bankName: data.bankName,
+        accountNumber: data.data.accountNumber,
+        accountName: data.data.accountName,
+        bankName: "", // This will be populated from our banks list
+        bankCode: data.data.bankCode,
+        fees: data.data.fees,
         isValid: true,
       },
     }
   } catch (error) {
     console.error("Error verifying bank account:", error)
-    throw new Error((error as {message: string}).message || "Failed to verify bank account")
+    throw error
   }
 }
 
-// Initiate offramp process
+// Update the initiateOfframpAPI function to include bankCode
 export const initiateOfframpAPI = async (
   amount: string,
   bankDetails: {
     accountNumber: string
     accountName: string
     bankName: string
+    bankCode: string
   },
 ): Promise<OfframpResponse> => {
   try {
@@ -204,9 +250,8 @@ export const initiateOfframpAPI = async (
       },
       body: JSON.stringify({
         amount,
-        bankAccount: bankDetails.accountNumber,
-        accountName: bankDetails.accountName,
-        bankName: bankDetails.bankName,
+        bankAccount: JSON.stringify(bankDetails),
+        userAddress: window.ethereum?.selectedAddress,
       }),
     })
 
@@ -226,7 +271,7 @@ export const initiateOfframpAPI = async (
     }
   } catch (error) {
     console.error("Error initiating offramp:", error)
-    throw new Error((error as {message: string}).message || "Failed to initiate offramp")
+    throw new Error((error as { message: string }).message || "Failed to initiate offramp")
   }
 }
 
@@ -267,7 +312,7 @@ export const initiateBridgeAPI = async (
     }
   } catch (error) {
     console.error("Error initiating bridge:", error)
-    throw new Error((error as {message: string}).message || "Failed to initiate bridge")
+    throw new Error((error as { message: string }).message || "Failed to initiate bridge")
   }
 }
 
@@ -299,7 +344,7 @@ export const checkBridgeStatusAPI = async (reference: string): Promise<BridgeSta
     }
   } catch (error) {
     console.error("Error checking bridge status:", error)
-    throw new Error((error as {message: string}).message || "Failed to check bridge status")
+    throw new Error((error as { message: string }).message || "Failed to check bridge status")
   }
 }
 
@@ -326,7 +371,7 @@ export const getSupportedChainsAPI = async (): Promise<
     return await response.json()
   } catch (error) {
     console.error("Error getting supported chains:", error)
-    throw new Error((error as {message: string}).message || "Failed to get supported chains")
+    throw new Error((error as { message: string }).message || "Failed to get supported chains")
   }
 }
 
@@ -352,7 +397,7 @@ export const getSupportedBanksAPI = async (): Promise<
     return await response.json()
   } catch (error) {
     console.error("Error getting supported banks:", error)
-    throw new Error((error as {message: string}).message || "Failed to get supported banks")
+    throw new Error((error as { message: string }).message || "Failed to get supported banks")
   }
 }
 
@@ -364,21 +409,33 @@ export const getTransactionStats = async (): Promise<{
   totalTransactions: number
 }> => {
   try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+
     const response = await fetch("/api/stats", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
+      signal: controller.signal,
     })
 
+    clearTimeout(timeoutId)
+
     if (!response.ok) {
-      throw new Error("Failed to get transaction stats")
+      throw new Error(`Failed to get transaction stats: ${response.status} ${response.statusText}`)
     }
 
     return await response.json()
   } catch (error) {
     console.error("Error getting transaction stats:", error)
-    throw new Error((error as {message: string}).message || "Failed to get transaction stats")
+    // Return default values instead of throwing
+    return {
+      onrampVolume: "0",
+      offrampVolume: "0",
+      bridgeVolume: "0",
+      totalTransactions: 0,
+    }
   }
 }
 
@@ -399,6 +456,7 @@ export const checkWithdrawalStatus = async (withdrawalId: string): Promise<Withd
     return await response.json()
   } catch (error) {
     console.error("Error checking withdrawal status:", error)
-    throw new Error((error as {message: string}).message || "Failed to check withdrawal status")
+    throw new Error((error as { message: string }).message || "Failed to check withdrawal status")
   }
 }
+

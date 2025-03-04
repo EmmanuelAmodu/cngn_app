@@ -1,62 +1,149 @@
 import { NextResponse } from "next/server"
-import { randomBytes } from "crypto"
 import { supabaseAdmin } from "@/lib/supabase"
-
-// Simulate banking provider API
-async function getVirtualAccount(userAddress: string) {
-  await new Promise((resolve) => setTimeout(resolve, 500))
-  return {
-    virtualAccount: `${userAddress.slice(2, 8)}${Math.floor(Math.random() * 10000)}`,
-    accountName: "John Doe",
-    bankName: "TEST BANK",
-  }
-}
+import { randomBytes } from "crypto"
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { userAddress, amount } = body
+    const { userAddress, amount, firstName, lastName, email, mobileNumber } = body
 
-    if (!userAddress || !amount) {
-      return NextResponse.json({ error: "Missing required fields: userAddress and amount" }, { status: 400 })
-    }
+    console.log("Received onramp initiation request:", {
+      userAddress,
+      amount,
+      firstName,
+      lastName,
+      email,
+      mobileNumber: mobileNumber ? "REDACTED" : "MISSING",
+    })
 
-    if (typeof amount !== "string" || Number.isNaN(Number(amount)) || Number(amount) <= 0) {
-      return NextResponse.json({ error: "Invalid amount provided" }, { status: 400 })
-    }
-
-    if (typeof userAddress !== "string" || !userAddress.startsWith("0x")) {
-      return NextResponse.json({ error: "Invalid wallet address" }, { status: 400 })
+    if (!userAddress || !amount || !firstName || !lastName || !email || !mobileNumber) {
+      console.error("Missing required fields for onramp initiation:", {
+        userAddress: !userAddress,
+        amount: !amount,
+        firstName: !firstName,
+        lastName: !lastName,
+        email: !email,
+        mobileNumber: !mobileNumber,
+      })
+      return NextResponse.json(
+        {
+          error: "Missing required fields",
+        },
+        { status: 400 },
+      )
     }
 
     // Generate onrampId
     const onrampId = `0x${randomBytes(32).toString("hex")}`
+    console.log("Generated onrampId:", onrampId)
 
-    // Get virtual account details
-    const { virtualAccount, bankName, accountName } = await getVirtualAccount(userAddress)
+    // Create virtual account via our API endpoint
+    console.log("Calling virtual account creation endpoint")
 
-    // Save to Supabase
-    const { error } = await supabaseAdmin.from("onramp_requests").insert({
+    let responseData
+    try {
+      const numeroResponse = await fetch(`${request.headers.get("origin")}/api/virtualaccount/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email,
+          mobileNumber,
+        }),
+      })
+
+      if (!numeroResponse.ok) {
+        const errorText = await numeroResponse.text()
+        console.error("Virtual account creation failed:", errorText)
+
+        try {
+          const errorData = JSON.parse(errorText)
+          throw new Error(errorData.error || "Failed to create virtual account")
+        } catch (e) {
+          throw new Error("Failed to create virtual account: " + errorText)
+        }
+      }
+
+      responseData = await numeroResponse.json()
+      console.log("Virtual account creation response:", responseData)
+
+      if (!responseData.status) {
+        throw new Error(responseData.message || "Failed to create virtual account")
+      }
+    } catch (error) {
+      console.error("Error creating virtual account:", error)
+
+      // For development/testing, use mock data if in development environment
+      if (process.env.NODE_ENV === "development") {
+        console.log("Using mock data for development environment")
+        responseData = {
+          status: true,
+          message: "Virtual account created successfully (MOCK)",
+          data: {
+            reference: `VA${Date.now()}`,
+            accountName: `${firstName} ${lastName}`,
+            accountNumber: `${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+            bankName: "Test Bank",
+          },
+        }
+      } else {
+        throw error
+      }
+    }
+
+    console.log("Saving to Supabase:", {
       onramp_id: onrampId,
       user_address: userAddress,
-      virtual_account: virtualAccount,
-      bank_name: bankName,
-      account_name: accountName,
+      virtual_account: responseData.data.accountNumber,
+      bank_name: responseData.data.bankName,
+      account_name: responseData.data.accountName,
     })
 
-    if (error) throw error
+    // Save to Supabase
+    try {
+      const { error } = await supabaseAdmin.from("onramp_requests").insert({
+        onramp_id: onrampId,
+        user_address: userAddress,
+        virtual_account: responseData.data.accountNumber,
+        bank_name: responseData.data.bankName,
+        account_name: responseData.data.accountName,
+        reference: responseData.data.reference,
+      })
 
+      if (error) {
+        console.error("Supabase insert error:", error)
+        throw error
+      }
+    } catch (dbError) {
+      console.error("Database error:", dbError)
+      return NextResponse.json(
+        {
+          error: "Failed to save virtual account details",
+          details: dbError instanceof Error ? dbError.message : "Unknown database error",
+        },
+        { status: 500 },
+      )
+    }
+
+    console.log("Onramp initiation successful")
     return NextResponse.json({
       success: true,
       onrampId,
-      virtualAccount,
-      bankName,
-      accountName,
+      virtualAccount: responseData.data.accountNumber,
+      bankName: responseData.data.bankName,
+      accountName: responseData.data.accountName,
+      reference: responseData.data.reference,
     })
   } catch (error) {
     console.error("Error in onramp initiate:", error)
     return NextResponse.json(
-      { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 },
     )
   }

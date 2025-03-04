@@ -1,14 +1,16 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle2, AlertCircle, Loader2, Copy, ExternalLink } from "lucide-react"
+import { CheckCircle2, AlertCircle, Loader2, Copy } from "lucide-react"
 import { Steps, Step } from "@/components/ui/steps"
-import { generateVirtualAccount, confirmDeposit, mintTokens, approveCNGN, depositCNGN } from "@/lib/contract"
 import { Card, CardContent } from "@/components/ui/card"
+import { generateVirtualAccountAPI, confirmDepositAPI } from "@/lib/api"
 
 interface OnrampFormProps {
   address: string | null
@@ -19,6 +21,14 @@ interface VirtualAccount {
   accountNumber: string
   bankName: string
   accountName: string
+  reference: string
+}
+
+interface UserDetails {
+  firstName: string
+  lastName: string
+  email: string
+  mobileNumber: string
 }
 
 export default function OnrampForm({ address, chainId }: OnrampFormProps) {
@@ -27,8 +37,13 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [txHash, setTxHash] = useState<string | null>(null)
   const [virtualAccount, setVirtualAccount] = useState<VirtualAccount | null>(null)
+  const [userDetails, setUserDetails] = useState<UserDetails>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    mobileNumber: "",
+  })
 
   // Copy to clipboard function
   const copyToClipboard = async (text: string) => {
@@ -41,15 +56,41 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
     }
   }
 
-  // Update the handleGenerateAccount function to handle API response
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setUserDetails((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
   const handleGenerateAccount = async () => {
     if (!address) {
       setError("Please connect your wallet first")
       return
     }
 
-    if (!amount || isNaN(Number.parseFloat(amount)) || Number.parseFloat(amount) <= 0) {
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       setError("Please enter a valid amount")
+      return
+    }
+
+    // Validate user details
+    if (!userDetails.firstName || !userDetails.lastName || !userDetails.email || !userDetails.mobileNumber) {
+      setError("Please fill in all required fields")
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(userDetails.email)) {
+      setError("Please enter a valid email address")
+      return
+    }
+
+    // Validate mobile number (basic validation)
+    if (!/^\d{10,15}$/.test(userDetails.mobileNumber.replace(/[^0-9]/g, ""))) {
+      setError("Please enter a valid mobile number")
       return
     }
 
@@ -57,17 +98,26 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
     setIsLoading(true)
 
     try {
-      // Clear previous virtual account if any
-      setVirtualAccount(null)
+      console.log("Generating virtual account with details:", {
+        amount,
+        userAddress: address,
+        firstName: userDetails.firstName,
+        lastName: userDetails.lastName,
+        email: userDetails.email,
+        mobileNumber: "REDACTED",
+      })
 
-      const account = await generateVirtualAccount(amount)
+      const account = await generateVirtualAccountAPI({
+        amount,
+        userAddress: address,
+        ...userDetails,
+      })
 
-      // Validate the received account details
-      if (!account.accountNumber || !account.bankName || !account.accountName) {
-        throw new Error("Invalid virtual account details received")
+      if (!account.status || !account.data) {
+        throw new Error(account.message || "Failed to generate virtual account")
       }
 
-      setVirtualAccount(account)
+      setVirtualAccount(account.data)
       setCurrentStep(1)
       setSuccess("Virtual account generated successfully!")
     } catch (err: any) {
@@ -79,7 +129,6 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
     }
   }
 
-  // Update the handleConfirmDeposit function to handle API response
   const handleConfirmDeposit = async () => {
     if (!virtualAccount) {
       setError("No virtual account found")
@@ -90,59 +139,11 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
     setIsLoading(true)
 
     try {
-      await confirmDeposit(amount)
+      await confirmDepositAPI(virtualAccount.reference, amount)
       setCurrentStep(2)
-      setSuccess("Deposit confirmed! Proceeding to mint tokens...")
-      // Automatically proceed to minting after deposit confirmation
-      handleMint()
+      setSuccess("Deposit confirmed! Your tokens will be minted shortly.")
     } catch (err: any) {
       setError(err.message || "Failed to confirm deposit. Please ensure you have made the transfer and try again.")
-      setIsLoading(false)
-    }
-  }
-
-  // Step 4: Mint Tokens
-  const handleMint = async () => {
-    try {
-      const hash = await mintTokens(amount)
-      setTxHash(hash)
-      setCurrentStep(3)
-      setSuccess("Tokens minted successfully!")
-    } catch (err: any) {
-      setError(err.message || "Failed to mint tokens")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleApprove = async () => {
-    setError(null)
-    setIsLoading(true)
-
-    try {
-      const hash = await approveCNGN(amount)
-      setTxHash(hash)
-      setSuccess("cNGN approved successfully!")
-      setCurrentStep(1)
-    } catch (err: any) {
-      setError(err.message || "Failed to approve cNGN")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleDeposit = async () => {
-    setError(null)
-    setSuccess(null)
-    setIsLoading(true)
-
-    try {
-      const hash = await depositCNGN(amount)
-      setTxHash(hash)
-      setSuccess("cNGN deposited successfully!")
-      setCurrentStep(2)
-    } catch (err: any) {
-      setError(err.message || "Failed to deposit cNGN")
     } finally {
       setIsLoading(false)
     }
@@ -160,31 +161,82 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
   return (
     <div className="space-y-6 py-4">
       <Steps currentStep={currentStep} className="mb-8">
-        <Step title="Connect Wallet" description="Connect to MetaMask" completed={currentStep >= 0} />
-        <Step title="Generate Account" description="Get virtual account details" completed={currentStep >= 1} />
-        <Step title="Deposit Funds" description="Send fiat to virtual account" completed={currentStep >= 2} />
-        <Step title="Mint Tokens" description="Receive your tokens" completed={currentStep >= 3} />
+        <Step title="Enter Details" description="Amount and personal information" completed={currentStep >= 0} />
+        <Step title="Get Account" description="Receive virtual account details" completed={currentStep >= 1} />
+        <Step title="Make Payment" description="Transfer funds" completed={currentStep >= 2} />
       </Steps>
 
       <div className="space-y-6">
         {currentStep === 0 && (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount (NGN)</Label>
-              <Input
-                id="amount"
-                type="number"
-                placeholder="Enter amount in NGN"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-            <Button onClick={handleGenerateAccount} disabled={isLoading || !amount} className="w-full">
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Generate Virtual Account
-            </Button>
-          </div>
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount (NGN)</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  placeholder="Enter amount in NGN"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  name="firstName"
+                  placeholder="Enter your first name"
+                  value={userDetails.firstName}
+                  onChange={handleInputChange}
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  name="lastName"
+                  placeholder="Enter your last name"
+                  value={userDetails.lastName}
+                  onChange={handleInputChange}
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={userDetails.email}
+                  onChange={handleInputChange}
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="mobileNumber">Mobile Number</Label>
+                <Input
+                  id="mobileNumber"
+                  name="mobileNumber"
+                  placeholder="Enter your mobile number"
+                  value={userDetails.mobileNumber}
+                  onChange={handleInputChange}
+                  disabled={isLoading}
+                />
+              </div>
+
+              <Button onClick={handleGenerateAccount} disabled={isLoading} className="w-full">
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Generate Virtual Account
+              </Button>
+            </CardContent>
+          </Card>
         )}
 
         {currentStep === 1 && virtualAccount && (
@@ -237,29 +289,10 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
         )}
 
         {currentStep === 2 && (
-          <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-            <p>Minting your tokens...</p>
-          </div>
-        )}
-
-        {currentStep === 3 && (
           <Alert className="bg-green-50 text-green-800 border-green-200">
             <CheckCircle2 className="h-4 w-4" />
             <AlertDescription>
-              <div className="space-y-2">
-                <p>Your tokens have been minted successfully!</p>
-                {txHash && (
-                  <a
-                    href={`https://etherscan.io/tx/${txHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center text-blue-600 hover:underline gap-1"
-                  >
-                    View transaction <ExternalLink className="h-4 w-4" />
-                  </a>
-                )}
-              </div>
+              Your transfer has been confirmed! Your tokens will be minted and sent to your wallet shortly.
             </AlertDescription>
           </Alert>
         )}
@@ -271,7 +304,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
           </Alert>
         )}
 
-        {success && !error && currentStep < 3 && (
+        {success && !error && currentStep < 2 && (
           <Alert className="bg-green-50 text-green-800 border-green-200">
             <CheckCircle2 className="h-4 w-4" />
             <AlertDescription>{success}</AlertDescription>

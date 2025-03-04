@@ -13,3 +13,4 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Admin client for server operations (used in API routes)
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+

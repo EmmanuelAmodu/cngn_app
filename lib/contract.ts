@@ -1,8 +1,4 @@
-// cNGN contract address (replace with your actual contract address)
-const CNGN_CONTRACT_ADDRESS = "0x5678901234567890123456789012345678901234"
-
-// DEX contract address (replace with your actual contract address)
-const DEX_CONTRACT_ADDRESS = "0x1234567890123456789012345678901234567890"
+import { CNGN_CONTRACT_ADDRESS, DEX_CONTRACT_ADDRESS, TOKEN_DECIMALS } from "./constants"
 
 // DEX ABI (simplified for deposit, withdraw, and bridge functions)
 const DEX_ABI = [
@@ -84,7 +80,7 @@ const getProviderAndSigner = async () => {
 
 // Convert cNGN amount to the correct decimals (18 decimals)
 const parseCNGNAmount = (amount: string) => {
-  return ethers.utils.parseUnits(amount, 18)
+  return ethers.utils.parseUnits(amount, TOKEN_DECIMALS)
 }
 
 // Approve cNGN to be spent by the DEX contract
@@ -322,13 +318,13 @@ export const burnTokens = async (
 // Verify bank account before offramp
 export const verifyBankAccount = async (
   accountNumber: string,
-  bankName: string,
+  bankCode: string,
 ): Promise<{
   accountName: string
   isValid: boolean
 }> => {
   try {
-    const response = await verifyBankAccountAPI(accountNumber, bankName)
+    const response = await verifyBankAccountAPI(accountNumber, bankCode)
 
     if (!response.status) {
       throw new Error(response.message)
@@ -351,6 +347,7 @@ export const initiateOfframp = async (
     accountNumber: string
     accountName: string
     bankName: string
+    bankCode: string
   },
 ): Promise<{
   reference: string

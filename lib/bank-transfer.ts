@@ -4,30 +4,56 @@ interface BankTransferResult {
   message: string
 }
 
-export async function sendNGNToBank(
-  amount: number,
-  bankDetails: {
-    accountNumber: string
-    accountName: string
-    bankName: string
-  },
-): Promise<BankTransferResult> {
-  // Simulate API call delay
-  await new Promise((resolve) => setTimeout(resolve, 2000))
+interface BankDetails {
+  accountNumber: string
+  accountName: string
+  bankName: string
+  bankCode: string
+}
 
-  // Simulate 95% success rate
-  const isSuccessful = Math.random() < 0.95
+export async function sendNGNToBank(amount: number, bankDetails: BankDetails): Promise<BankTransferResult> {
+  try {
+    // Instead of directly using crypto here, we'll call our API endpoint
+    // that will handle the Numero API interaction server-side
+    const response = await fetch("/api/payout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        amount,
+        destinationAccountNumber: bankDetails.accountNumber,
+        destinationBankCode: bankDetails.bankCode,
+        destinationAccountName: bankDetails.accountName,
+      }),
+    })
 
-  if (isSuccessful) {
-    // Generate a mock reference number
-    const reference = `NGN${Date.now()}${Math.floor(Math.random() * 1000)}`
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Fund transfer failed")
+    }
+
+    const responseData = await response.json()
+
     return {
       success: true,
-      reference,
+      reference: responseData.transferReference,
       message: "Transfer successful",
     }
-  }
+  } catch (error) {
+    console.error("Error in bank transfer:", error)
 
-  throw new Error("Bank transfer failed")
+    // For development/testing, we'll still allow a fallback to simulate success
+    if (process.env.NODE_ENV === "development") {
+      console.warn("Using fallback success response for development")
+      return {
+        success: true,
+        reference: `NGN${Date.now()}${Math.floor(Math.random() * 1000)}`,
+        message: "Transfer simulated (development mode)",
+      }
+    }
+
+    throw error
+  }
 }
 

@@ -52,9 +52,9 @@ create table bridges (
   source_chain_id integer not null,
   destination_chain_id integer not null,
   source_tx_hash integer not null,
-  destination_tx_hash text
-  status text not null default 'pending' check (status in ('pending', 'processing', 'completed', 'failed'));
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  destination_tx_hash text,
+  status text not null default 'pending' check (status in ('pending', 'processing', 'completed', 'failed')),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -93,3 +93,4 @@ create trigger update_deposits_updated_at
     before update on deposits
     for each row
     execute function update_updated_at_column();
+

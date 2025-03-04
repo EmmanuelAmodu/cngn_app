@@ -1,6 +1,7 @@
 import { createPublicClient, createWalletClient, http, type Address, type WalletClient } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 import { mainnet } from "viem/chains"
+import { CNGN_CONTRACT_ADDRESS, DEX_CONTRACT_ADDRESS } from "./constants"
 
 // Contract ABI
 export const contractABI = [
@@ -52,17 +53,10 @@ if (!process.env.NEXT_PUBLIC_RPC_URL) {
   throw new Error("NEXT_PUBLIC_RPC_URL is not defined")
 }
 
-if (!process.env.NEXT_PUBLIC_CONTRACT_ADDRESS) {
-  throw new Error("NEXT_PUBLIC_CONTRACT_ADDRESS is not defined")
-}
-
-if (!process.env.ADMIN_PRIVATE_KEY) {
-  throw new Error("ADMIN_PRIVATE_KEY is not defined")
-}
-
 export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL
-export const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as Address
-export const TOKEN_ADDRESS = process.env.NEXT_PUBLIC_TOKEN_ADDRESS as Address
+export const CONTRACT_ADDRESS =
+  (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as Address) || (DEX_CONTRACT_ADDRESS as Address)
+export const TOKEN_ADDRESS = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS as Address) || (CNGN_CONTRACT_ADDRESS as Address)
 
 // Initialize clients
 export const publicClient = createPublicClient({

@@ -50,13 +50,19 @@ async function processWithdrawal(withdrawalId: string, amount: number, offrampId
   }
 }
 
-async function processBridge(bridgeId: string, userAddress: string, amount: bigint, destinationChainId: number) {
+async function processBridgeFrom(
+  bridgeId: string,
+  userAddress: string,
+  amount: bigint,
+  sourceChainId: number,
+  destinationChainId: number,
+) {
   try {
     // Update status to processing
     await supabaseAdmin.from("bridges").update({ status: "processing" }).eq("id", bridgeId)
 
     // Send cNGN on destination chain
-    const result = await sendCNGNOnDestinationChain(destinationChainId, userAddress, amount)
+    const result = await sendCNGNOnDestinationChain(destinationChainId, userAddress, amount, sourceChainId, bridgeId)
 
     // Update bridge status to completed
     await supabaseAdmin
@@ -122,19 +128,19 @@ export async function startEventListeners() {
     },
   })
 
-  // Watch for Bridge events
-  const unsubscribeBridge = publicClient.watchContractEvent({
+  // Watch for BridgeFrom events
+  const unsubscribeBridgeFrom = publicClient.watchContractEvent({
     address: CONTRACT_ADDRESS,
     abi: contractABI,
-    eventName: "Bridge",
+    eventName: "BridgeFrom",
     onLogs: async (logs) => {
       for (const log of logs) {
         const { args } = log
         if (!args) continue
 
-        const { user, amount, destinationChainId } = args
+        const { user, amount, destinationChainId, bridgeId } = args
 
-        if (!user || !amount || !destinationChainId) {
+        if (!user || !amount || !destinationChainId || !bridgeId) {
           console.error("Invalid bridge event arguments")
           continue
         }
@@ -144,8 +150,10 @@ export async function startEventListeners() {
           const { data: bridge, error } = await supabaseAdmin
             .from("bridges")
             .insert({
+              id: bridgeId,
               user_address: user,
               amount: Number(amount),
+              source_chain_id: Number(log.chainId),
               destination_chain_id: Number(destinationChainId),
               status: "pending",
             })
@@ -157,7 +165,7 @@ export async function startEventListeners() {
           }
 
           // Process the bridge
-          await processBridge(bridge.id, user, BigInt(amount), Number(destinationChainId))
+          await processBridgeFrom(bridge.id, user, BigInt(amount), Number(log.chainId), Number(destinationChainId))
         } catch (error) {
           console.error("Error handling bridge event:", error)
         }
@@ -165,9 +173,40 @@ export async function startEventListeners() {
     },
   })
 
+  // Watch for BridgeTo events for tracking purposes
+  const unsubscribeBridgeTo = publicClient.watchContractEvent({
+    address: CONTRACT_ADDRESS,
+    abi: contractABI,
+    eventName: "BridgeTo",
+    onLogs: async (logs) => {
+      for (const log of logs) {
+        const { args } = log
+        if (!args) continue
+
+        const { to, amount, sourceChainId, bridgeId } = args
+
+        try {
+          // Update bridge record with completion on destination chain
+          await supabaseAdmin
+            .from("bridges")
+            .update({
+              completed_on_destination: true,
+              destination_chain_tx_hash: log.transactionHash,
+            })
+            .eq("id", bridgeId)
+
+          console.log(`Bridge ${bridgeId} completed on destination chain`)
+        } catch (error) {
+          console.error("Error handling BridgeTo event:", error)
+        }
+      }
+    },
+  })
+
   return () => {
     unsubscribeWithdrawal()
-    unsubscribeBridge()
+    unsubscribeBridgeFrom()
+    unsubscribeBridgeTo()
   }
 }
 

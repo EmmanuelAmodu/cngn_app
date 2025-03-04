@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
 import { publicClient, getWalletClient, CONTRACT_ADDRESS, contractABI } from "@/lib/blockchain"
 import type { Address } from "viem"
-import { mainnet } from "viem/chains"
 import crypto from "crypto"
 
 const NUMERO_API_URL = process.env.NUMERO_API_URL || "https://api.numero.co"
@@ -135,18 +134,12 @@ export async function POST(request: Request) {
       // Convert amount to BigInt with proper decimal places (18 decimals for ERC20)
       const amountInWei = BigInt(Number(amount) * 10 ** 18)
 
-      if (!walletClient.account) {
-        throw new Error("Wallet client account not initialized")
-      }
-
       // Execute deposit transaction
       const txHash = await walletClient.writeContract({
         address: CONTRACT_ADDRESS,
         abi: contractABI,
-        account: walletClient.account,
         functionName: "deposit",
         args: [userAddress as Address, amountInWei, onrampId as `0x${string}`],
-        chain: mainnet,
       })
 
       console.log("Transaction submitted:", txHash)
@@ -168,7 +161,7 @@ export async function POST(request: Request) {
         depositId: deposit.id,
         txHash,
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error("Deposit transaction failed:", error)
 
       // Update deposit status to failed
@@ -182,17 +175,17 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: "Deposit transaction failed",
-          details: error instanceof Error ? error.message : "Unknown error",
+          details: error.message,
         },
         { status: 500 },
       )
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in deposit webhook:", error)
     return NextResponse.json(
       {
         error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
+        details: error.message,
       },
       { status: 500 },
     )

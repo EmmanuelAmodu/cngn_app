@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { bridgeCNGN, initiateBridge, checkBridgeStatus } from "@/lib/contract"
 import { getSupportedChainsAPI } from "@/lib/api"
 import { Steps, Step } from "@/components/ui/steps"
+import { chainConfigs } from "@/lib/constants"
 
 interface BridgeFormProps {
   address: string | null
@@ -118,15 +119,18 @@ export default function BridgeForm({ address, chainId }: BridgeFormProps) {
 
     try {
       setCurrentStep(2)
-      // First approve and bridge on the blockchain
+
+      // First initiate the bridge monitoring to get the bridgeId
+      const bridgeResult = await initiateBridge(
+        amount,
+        chainConfigs[chainId!].name,
+        chainConfigs[Number(destinationChainId)].name,
+      )
+
+      // Then call bridgeFrom on the source chain with the bridgeId
       const hash = await bridgeCNGN(amount, Number.parseInt(destinationChainId))
       setTxHash(hash)
 
-      // Then initiate the bridge monitoring
-      const sourceChain = chains.find((c) => c.id === chainId)?.name || "Unknown"
-      const destChain = chains.find((c) => c.id.toString() === destinationChainId)?.name || "Unknown"
-
-      const bridgeResult = await initiateBridge(amount, sourceChain, destChain)
       setBridgeReference(bridgeResult.reference)
       setBridgeStatus("pending")
       setCurrentStep(3)

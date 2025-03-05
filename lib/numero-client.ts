@@ -140,3 +140,48 @@ export async function getTransaction(reference: string) {
     throw new Error(`Error fetching transaction: ${error instanceof Error ? error.message : error}`);
   }
 }
+
+export async function verifyBankAccount(accountNumber: string, bankCode: string) {
+    try {
+      const payload = JSON.stringify({
+        accountNumber,
+        bankCode,
+      })
+  
+      // Generate signature
+      const signature = generateSignature(payload)
+  
+      // Call Numero API to validate account
+      const response = await fetch(`${NUMERO_API_URL}/validate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Api-Key": NUMERO_API_KEY,
+          "X-Signature": signature,
+        },
+        body: payload,
+      })
+  
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || "Failed to validate account")
+      }
+  
+      const data = await response.json()
+  
+      if (!data.status) {
+        throw new Error(data.message || "Account validation failed")
+      }
+  
+      return {
+        accountNumber: data.data.accountNumber,
+        accountName: data.data.accountName,
+        bankCode: data.data.bankCode,
+        fees: data.data.fees,
+        isValid: true,
+      }
+    } catch (error) {
+      console.error("Error in bank account validation:", error)
+      throw new Error(`Error in bank account validation: ${error instanceof Error ? error.message : error}`);
+    }
+}

@@ -48,7 +48,11 @@ async function verifyTransaction(reference: string): Promise<boolean> {
 
     // Check if the transaction exists and is successful
     const transaction = data.data.transactions.find(
-      (tx: any) => tx.reference === reference && tx.status === "Successful" && tx.requestState === "Completed",
+      (tx: {
+        reference: string
+        status: string
+        requestState: string
+      }) => tx.reference === reference && tx.status === "Successful" && tx.requestState === "Completed",
     )
 
     return !!transaction

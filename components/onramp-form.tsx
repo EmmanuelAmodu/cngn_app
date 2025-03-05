@@ -74,7 +74,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
             params: [{ chainId: `0x${chainId.toString(16)}` }],
           })
           return true
-        } catch (switchError: any) {
+        } catch (switchError) {
           console.error("Failed to switch networks:", switchError)
           return false
         }
@@ -118,7 +118,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
     const isCorrectNetwork = await ensureCorrectNetwork()
     if (!isCorrectNetwork) return
 
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+    if (!amount || Number.isNaN(Number(amount)) || Number(amount) <= 0) {
       setError("Please enter a valid amount")
       return
     }
@@ -170,9 +170,9 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
       setVirtualAccount(account.data)
       setCurrentStep(1)
       setSuccess("Virtual account generated successfully!")
-    } catch (err: any) {
+    } catch (err) {
       console.error("Virtual account generation error:", err)
-      setError(err.message || "Failed to generate virtual account. Please try again.")
+      setError((err as { message: string }).message || "Failed to generate virtual account. Please try again.")
       setCurrentStep(0)
     } finally {
       setIsLoading(false)
@@ -197,8 +197,8 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
       await confirmDepositAPI(virtualAccount.reference, amount, chainId || 1)
       setCurrentStep(2)
       setSuccess("Deposit confirmed! Your tokens will be minted shortly.")
-    } catch (err: any) {
-      setError(err.message || "Failed to confirm deposit. Please ensure you have made the transfer and try again.")
+    } catch (err) {
+      setError((err as { message: string }).message || "Failed to confirm deposit. Please ensure you have made the transfer and try again.")
     } finally {
       setIsLoading(false)
     }

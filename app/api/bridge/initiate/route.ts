@@ -4,7 +4,7 @@ import { randomBytes } from "crypto"
 
 export async function POST(request: Request) {
   try {
-    const { amount, sourceChain, destinationChain, userAddress } = await request.json()
+    const { amount, sourceChain, destinationChain, userAddress, sourceChainId } = await request.json()
 
     if (!amount || !sourceChain || !destinationChain || !userAddress) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       id: bridgeId,
       user_address: userAddress,
       amount: Number.parseInt(amount),
-      source_chain_id: sourceChain,
+      source_chain_id: sourceChainId || 1,
       destination_chain_id: destinationChain,
       status: "pending",
     })

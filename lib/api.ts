@@ -52,6 +52,7 @@ export interface VirtualAccountRequest {
   lastName: string
   email: string
   mobileNumber: string
+  chainId?: number
 }
 
 // Add to your existing types
@@ -83,6 +84,7 @@ export const generateVirtualAccountAPI = async (data: VirtualAccountRequest): Pr
       lastName: data.lastName,
       email: data.email,
       mobileNumber: data.mobileNumber ? "REDACTED" : "MISSING",
+      chainId: data.chainId || 1,
     })
 
     const response = await fetch("/api/onramp/initiate", {
@@ -96,7 +98,7 @@ export const generateVirtualAccountAPI = async (data: VirtualAccountRequest): Pr
     const responseText = await response.text()
     console.log(`API response status: ${response.status}`)
 
-    let responseData
+    let responseData: unknown
     try {
       responseData = JSON.parse(responseText)
     } catch (e) {
@@ -141,6 +143,7 @@ export const generateVirtualAccountAPI = async (data: VirtualAccountRequest): Pr
 export const confirmDepositAPI = async (
   reference: string,
   amount: string,
+  chainId = 1,
 ): Promise<{
   status: boolean
   message: string
@@ -160,6 +163,7 @@ export const confirmDepositAPI = async (
         userAddress: window.ethereum.selectedAddress,
         amount,
         onrampId: reference,
+        chainId,
       }),
     })
 
@@ -232,7 +236,7 @@ export const verifyBankAccountAPI = async (
   }
 }
 
-// Update the initiateOfframpAPI function to include bankCode
+// Update the initiateOfframpAPI function to include chainId
 export const initiateOfframpAPI = async (
   amount: string,
   bankDetails: {
@@ -241,6 +245,7 @@ export const initiateOfframpAPI = async (
     bankName: string
     bankCode: string
   },
+  chainId = 1,
 ): Promise<OfframpResponse> => {
   try {
     const response = await fetch("/api/register/offramp", {
@@ -252,6 +257,7 @@ export const initiateOfframpAPI = async (
         amount,
         bankAccount: JSON.stringify(bankDetails),
         userAddress: window.ethereum?.selectedAddress,
+        chainId,
       }),
     })
 
@@ -280,6 +286,7 @@ export const initiateBridgeAPI = async (
   amount: string,
   sourceChain: string,
   destinationChain: string,
+  sourceChainId = 1,
 ): Promise<BridgeStatusResponse> => {
   try {
     const response = await fetch("/api/bridge/initiate", {
@@ -291,6 +298,7 @@ export const initiateBridgeAPI = async (
         amount,
         sourceChain,
         destinationChain,
+        sourceChainId,
       }),
     })
 

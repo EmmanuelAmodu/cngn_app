@@ -1,45 +1,47 @@
-import { mainnet, polygon, arbitrum, optimism, base } from "viem/chains"
-
-// Contract addresses
-export const CNGN_CONTRACT_ADDRESS =
-  process.env.NEXT_PUBLIC_TOKEN_ADDRESS || "0x5678901234567890123456789012345678901234"
-export const DEX_CONTRACT_ADDRESS =
-  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x1234567890123456789012345678901234567890"
+import { mainnet, polygon, arbitrum, optimism, base, type Chain } from "viem/chains"
 
 // Chain configurations
-export const chainConfigs = {
+export const chainConfigs: {
+  [key: number]: {
+    name: string
+    tokenAddress: string
+    contractAddress: string
+    rpcUrl: string
+    chain: Chain
+  }
+} = {
   1: {
     name: "Ethereum",
-    cngnTokenAddress: "0x",
-    dexContractAddress: "0x",
+    tokenAddress: "0x5678901234567890123456789012345678901234",
+    contractAddress: "0x1234567890123456789012345678901234567890",
     rpcUrl: "https://mainnet.infura.io/v3/",
     chain: mainnet,
   },
   137: {
     name: "Polygon",
-    cngnTokenAddress: "0x",
-    dexContractAddress: "0x",
+    tokenAddress: "0x5678901234567890123456789012345678901234",
+    contractAddress: "0x1234567890123456789012345678901234567890",
     rpcUrl: "https://polygon-mainnet.infura.io/v3/",
     chain: polygon,
   },
   42161: {
     name: "Arbitrum",
-    cngnTokenAddress: "0x",
-    dexContractAddress: "0x",
+    tokenAddress: "0x5678901234567890123456789012345678901234",
+    contractAddress: "0x1234567890123456789012345678901234567890",
     rpcUrl: "https://arb1.arbitrum.io/rpc",
     chain: arbitrum,
   },
   10: {
     name: "Optimism",
-    cngnTokenAddress: "0x",
-    dexContractAddress: "0x",
+    tokenAddress: "0x5678901234567890123456789012345678901234",
+    contractAddress: "0x1234567890123456789012345678901234567890",
     rpcUrl: "https://mainnet.optimism.io",
     chain: optimism,
   },
   8453: {
     name: "Base",
-    cngnTokenAddress: "0x",
-    dexContractAddress: "0x",
+    tokenAddress: "0x5678901234567890123456789012345678901234",
+    contractAddress: "0x1234567890123456789012345678901234567890",
     rpcUrl: "https://base.chain",
     chain: base,
   },

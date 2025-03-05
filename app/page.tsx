@@ -25,7 +25,7 @@ export default function Home() {
           </div>
           <CardDescription>Easily onramp, offramp, and bridge your cNGN tokens</CardDescription>
           <div className="mt-4">
-            <ConnectWallet address={address} setAddress={setAddress} setChainId={setChainId} />
+            <ConnectWallet address={address} setAddress={setAddress} setChainId={setChainId} chainId={chainId} />
           </div>
           <div className="mt-8">
             <Stats />

@@ -89,11 +89,57 @@ export default function BridgeForm({ address, chainId }: BridgeFormProps) {
     }
   }, [bridgeReference, bridgeStatus])
 
+  const ensureCorrectNetwork = async () => {
+    if (!chainId) {
+      setError("Please connect your wallet first")
+      return false
+    }
+
+    if (!window.ethereum) {
+      setError("MetaMask is not installed")
+      return false
+    }
+
+    try {
+      const chainIdHex = await window.ethereum.request({
+        method: "eth_chainId",
+      })
+      const currentChainId = Number.parseInt(chainIdHex, 16)
+
+      if (currentChainId !== chainId) {
+        setError(`Please switch your wallet to ${chainConfigs[chainId].name} network to continue`)
+
+        // Prompt the user to switch networks
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: `0x${chainId.toString(16)}` }],
+          })
+          return true
+        } catch (switchError: any) {
+          console.error("Failed to switch networks:", switchError)
+          return false
+        }
+      }
+
+      return true
+    } catch (error) {
+      console.error("Error checking network:", error)
+      setError("Failed to verify network. Please try again.")
+      return false
+    }
+  }
+
+  // Update the handleBridge function to pass chainId
   const handleBridge = async () => {
     if (!address) {
       setError("Please connect your wallet first")
       return
     }
+
+    // Ensure wallet is on the correct network
+    const isCorrectNetwork = await ensureCorrectNetwork()
+    if (!isCorrectNetwork) return
 
     if (!amount || isNaN(Number.parseFloat(amount)) || Number.parseFloat(amount) <= 0) {
       setError("Please enter a valid amount")
@@ -123,12 +169,13 @@ export default function BridgeForm({ address, chainId }: BridgeFormProps) {
       // First initiate the bridge monitoring to get the bridgeId
       const bridgeResult = await initiateBridge(
         amount,
-        chainConfigs[chainId!].name,
+        chainConfigs[chainId || 1].name,
         chainConfigs[Number(destinationChainId)].name,
+        chainId || 1,
       )
 
       // Then call bridgeFrom on the source chain with the bridgeId
-      const hash = await bridgeCNGN(amount, Number.parseInt(destinationChainId))
+      const hash = await bridgeCNGN(amount, Number.parseInt(destinationChainId), chainId || 1)
       setTxHash(hash)
 
       setBridgeReference(bridgeResult.reference)

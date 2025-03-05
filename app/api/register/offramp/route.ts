@@ -4,7 +4,7 @@ import { randomBytes } from "crypto"
 
 export async function POST(request: Request) {
   try {
-    const { userAddress, bankAccount } = await request.json()
+    const { userAddress, bankAccount, chainId = 1 } = await request.json()
 
     if (!userAddress || !bankAccount) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
@@ -18,6 +18,7 @@ export async function POST(request: Request) {
         offramp_id: offRampId,
         user_address: userAddress,
         bank_account: bankAccount, // This now contains the full bank details including phone number
+        chain_id: chainId,
       })
       .select()
       .single()

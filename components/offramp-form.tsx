@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { approveTokens, burnTokens, verifyBankAccount, initiateOfframp } from "@/lib/contract"
 import { getSupportedBanksAPI } from "@/lib/api"
 import { Steps, Step } from "@/components/ui/steps"
+import { chainConfigs } from "@/lib/constants"
 
 interface OfframpFormProps {
   address: string | null
@@ -41,6 +42,48 @@ export default function OfframpForm({ address, chainId }: OfframpFormProps) {
   })
   const [isVerifying, setIsVerifying] = useState(false)
   const [offrampReference, setOfframpReference] = useState<string | null>(null)
+
+  // Add this function at the beginning of the OfframpForm component
+  const ensureCorrectNetwork = async () => {
+    if (!chainId) {
+      setError("Please connect your wallet first")
+      return false
+    }
+
+    if (!window.ethereum) {
+      setError("MetaMask is not installed")
+      return false
+    }
+
+    try {
+      const chainIdHex = await window.ethereum.request({
+        method: "eth_chainId",
+      })
+      const currentChainId = Number.parseInt(chainIdHex, 16)
+
+      if (currentChainId !== chainId) {
+        setError(`Please switch your wallet to ${chainConfigs[chainId].name} network to continue`)
+
+        // Prompt the user to switch networks
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: `0x${chainId.toString(16)}` }],
+          })
+          return true
+        } catch (switchError: any) {
+          console.error("Failed to switch networks:", switchError)
+          return false
+        }
+      }
+
+      return true
+    } catch (error) {
+      console.error("Error checking network:", error)
+      setError("Failed to verify network. Please try again.")
+      return false
+    }
+  }
 
   // Load supported banks
   useEffect(() => {
@@ -116,13 +159,17 @@ export default function OfframpForm({ address, chainId }: OfframpFormProps) {
     setSuccess("Bank details saved successfully!")
   }
 
-  // Handle token approval
+  // Update the handleApprove function to check network first
   const handleApprove = async () => {
+    // Ensure wallet is on the correct network
+    const isCorrectNetwork = await ensureCorrectNetwork()
+    if (!isCorrectNetwork) return
+
     setError(null)
     setIsLoading(true)
 
     try {
-      const hash = await approveTokens(amount)
+      const hash = await approveTokens(amount, chainId || 1)
       setTxHash(hash)
       setCurrentStep(2)
       setSuccess("Token spend approved successfully!")
@@ -133,18 +180,22 @@ export default function OfframpForm({ address, chainId }: OfframpFormProps) {
     }
   }
 
-  // Handle token burn and offramp
+  // Update the handleBurn function to check network first
   const handleBurn = async () => {
+    // Ensure wallet is on the correct network
+    const isCorrectNetwork = await ensureCorrectNetwork()
+    if (!isCorrectNetwork) return
+
     setError(null)
     setIsLoading(true)
 
     try {
       // First burn the tokens
-      const hash = await burnTokens(amount, bankDetails)
+      const hash = await burnTokens(amount, bankDetails, chainId || 1)
       setTxHash(hash)
 
       // Then initiate the offramp process
-      const offrampResult = await initiateOfframp(amount, bankDetails)
+      const offrampResult = await initiateOfframp(amount, bankDetails, chainId || 1)
       setOfframpReference(offrampResult.reference)
 
       setCurrentStep(3)

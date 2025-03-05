@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
-import { publicClient, getWalletClient, CONTRACT_ADDRESS, contractABI } from "@/lib/blockchain"
+import {
+  publicClient,
+  getWalletClient,
+  getContractAddress,
+  contractABI,
+  getChain,
+  getPublicClient,
+} from "@/lib/blockchain"
 import type { Address } from "viem"
-import { mainnet } from "viem/chains"
 import crypto from "crypto"
 
 const NUMERO_API_URL = process.env.NUMERO_API_URL || "https://api.numero.co"
@@ -55,9 +61,9 @@ async function verifyTransaction(reference: string): Promise<boolean> {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { bankReference, userAddress, amount, onrampId } = body
+    const { bankReference, userAddress, amount, onrampId, chainId = 1 } = body
 
-    console.log("Received webhook payload:", { bankReference, userAddress, amount, onrampId })
+    console.log("Received webhook payload:", { bankReference, userAddress, amount, onrampId, chainId })
 
     // Validate all required fields
     if (!bankReference || !userAddress || !amount || !onrampId) {
@@ -111,6 +117,7 @@ export async function POST(request: Request) {
         user_address: userAddress,
         amount: Number(amount),
         onramp_id: onrampId,
+        chain_id: chainId,
         status: "processing", // Using one of the allowed status values
       })
       .select()
@@ -124,13 +131,13 @@ export async function POST(request: Request) {
     console.log("Deposit saved successfully:", deposit)
 
     try {
-      // Get wallet client
-      const walletClient = getWalletClient()
+      // Get wallet client for the specified chain
+      const walletClient = getWalletClient(chainId)
       if (!walletClient) {
         throw new Error("Wallet client not initialized")
       }
 
-      console.log("Executing deposit transaction...")
+      console.log(`Executing deposit transaction on chain ${chainId}...`)
 
       // Convert amount to BigInt with proper decimal places (18 decimals for ERC20)
       const amountInWei = BigInt(Number(amount) * 10 ** 18)
@@ -139,19 +146,25 @@ export async function POST(request: Request) {
         throw new Error("Wallet client account not initialized")
       }
 
+      // Get the chain for the specified chainId
+      const chain = getChain(chainId)
+
       // Execute deposit transaction
       const txHash = await walletClient.writeContract({
-        address: CONTRACT_ADDRESS,
+        address: getContractAddress(chainId),
         abi: contractABI,
         account: walletClient.account,
         functionName: "deposit",
         args: [userAddress as Address, amountInWei, onrampId as `0x${string}`],
-        chain: mainnet,
+        chain,
       })
 
       console.log("Transaction submitted:", txHash)
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      // Get the public client for the specified chain
+      const client = publicClient.chain.id === chainId ? publicClient : getPublicClient(chainId)
+
+      const receipt = await client.waitForTransactionReceipt({ hash: txHash })
       console.log("Transaction confirmed:", receipt)
 
       // Update deposit status in Supabase

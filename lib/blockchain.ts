@@ -1,52 +1,8 @@
-import { createPublicClient, createWalletClient, http, type Address, type WalletClient } from "viem"
+import { createPublicClient, createWalletClient, http, type Address, type WalletClient, type Chain } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 import { mainnet } from "viem/chains"
-import { CNGN_CONTRACT_ADDRESS, DEX_CONTRACT_ADDRESS } from "./constants"
-
-// Contract ABI
-export const contractABI = [
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, name: "user", type: "address" },
-      { indexed: false, name: "amount", type: "uint256" },
-      { indexed: false, name: "onrampId", type: "bytes32" },
-    ],
-    name: "Deposit",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, name: "user", type: "address" },
-      { indexed: false, name: "amount", type: "uint256" },
-      { indexed: false, name: "offRampId", type: "bytes32" },
-    ],
-    name: "Withdrawal",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, name: "user", type: "address" },
-      { indexed: false, name: "amount", type: "uint256" },
-      { indexed: false, name: "destinationChainId", type: "uint256" },
-    ],
-    name: "Bridge",
-    type: "event",
-  },
-  {
-    inputs: [
-      { name: "to", type: "address" },
-      { name: "amount", type: "uint256" },
-      { name: "onrampId", type: "bytes32" },
-    ],
-    name: "deposit",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const
+import { chainConfigs } from "./constants"
+import { DEX_ABI } from "./abi/dex-abi"
 
 // Configuration
 if (!process.env.NEXT_PUBLIC_RPC_URL) {
@@ -54,9 +10,24 @@ if (!process.env.NEXT_PUBLIC_RPC_URL) {
 }
 
 export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL
-export const CONTRACT_ADDRESS =
-  (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as Address) || (DEX_CONTRACT_ADDRESS as Address)
-export const TOKEN_ADDRESS = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS as Address) || (CNGN_CONTRACT_ADDRESS as Address)
+
+export const getContractAddress = (chainId = 1): Address => {
+  return (
+    (chainConfigs[chainId]?.contractAddress as Address) ||
+    (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as Address) ||
+    ("0x1234567890123456789012345678901234567890" as Address)
+  )
+}
+
+export const getTokenAddress = (chainId = 1): Address => {
+  return (
+    (chainConfigs[chainId]?.tokenAddress as Address)
+  )
+}
+
+export const getChain = (chainId = 1): Chain => {
+  return chainConfigs[chainId]?.chain || mainnet
+}
 
 // Initialize clients
 export const publicClient = createPublicClient({
@@ -64,16 +35,30 @@ export const publicClient = createPublicClient({
   transport: http(RPC_URL),
 })
 
+// Create a public client for a specific chain
+export const getPublicClient = (chainId = 1) => {
+  const chain = getChain(chainId)
+  const rpcUrl = chainConfigs[chainId]?.rpcUrl || RPC_URL
+
+  return createPublicClient({
+    chain,
+    transport: http(rpcUrl),
+  })
+}
+
 let walletClient: WalletClient | null = null
 
-export function initializeWalletClient(privateKey: string) {
+export function initializeWalletClient(privateKey: string, chainId = 1) {
   try {
     console.log("Initializing wallet client...")
     const account = privateKeyToAccount(privateKey as `0x${string}`)
+    const chain = getChain(chainId)
+    const rpcUrl = chainConfigs[chainId]?.rpcUrl || RPC_URL
+
     walletClient = createWalletClient({
       account,
-      chain: mainnet,
-      transport: http(RPC_URL),
+      chain,
+      transport: http(rpcUrl),
     })
     console.log("Wallet client initialized successfully")
     return walletClient
@@ -83,14 +68,17 @@ export function initializeWalletClient(privateKey: string) {
   }
 }
 
-export function getWalletClient() {
+export function getWalletClient(chainId = 1) {
   if (!walletClient) {
     console.log("Initializing wallet client with admin private key...")
     if (!process.env.ADMIN_PRIVATE_KEY) {
       throw new Error("ADMIN_PRIVATE_KEY is not defined")
     }
-    return initializeWalletClient(process.env.ADMIN_PRIVATE_KEY)
+    return initializeWalletClient(process.env.ADMIN_PRIVATE_KEY, chainId)
   }
   return walletClient
 }
+
+// Export the contract ABI
+export { DEX_ABI as contractABI }
 

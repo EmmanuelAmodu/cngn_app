@@ -1,9 +1,7 @@
 import { createPublicClient, createWalletClient, http, type Hash } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 import { chainConfigs } from "@/lib/constants"
-
-// Mock successful transaction 95% of the time
-const MOCK_SUCCESS_RATE = 0.95
+import { DEX_ABI } from "./abi/dex-abi"
 
 // Get and validate private key
 const getPrivateKey = () => {
@@ -68,14 +66,6 @@ export async function sendCNGNOnDestinationChain(
   bridgeId: string,
 ): Promise<{ txHash: Hash }> {
   try {
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    // Mock failure based on success rate
-    if (Math.random() > MOCK_SUCCESS_RATE) {
-      throw new Error("Bridge transaction failed")
-    }
-
     const chainConfig = chainConfigs[destinationChainId]
     if (!chainConfig) {
       throw new Error("Unsupported destination chain")
@@ -88,23 +78,10 @@ export async function sendCNGNOnDestinationChain(
       throw new Error(`No wallet client available for chain ${destinationChainId}`)
     }
 
-    // Call bridgeTo on the destination chain
+    // Call bridgeTo on the destination chain using the contract address from chainConfigs
     const hash = await walletClient.writeContract({
       address: chainConfig.contractAddress as `0x${string}`,
-      abi: [
-        {
-          inputs: [
-            { name: "to", type: "address" },
-            { name: "amount", type: "uint256" },
-            { name: "sourceChainId", type: "uint8" },
-            { name: "bridgeId", type: "bytes32" },
-          ],
-          name: "bridgeTo",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-      ],
+      abi: DEX_ABI,
       functionName: "bridgeTo",
       args: [userAddress as `0x${string}`, amount, sourceChainId as number, bridgeId as `0x${string}`],
     })

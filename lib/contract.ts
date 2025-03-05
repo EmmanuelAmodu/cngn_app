@@ -1,69 +1,5 @@
-import { CNGN_CONTRACT_ADDRESS, DEX_CONTRACT_ADDRESS, TOKEN_DECIMALS } from "./constants"
-
-// DEX ABI (simplified for deposit, withdraw, and bridge functions)
-const DEX_ABI = [
-  {
-    inputs: [{ name: "amount", type: "uint256" }],
-    name: "deposit",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "amount", type: "uint256" }],
-    name: "withdraw",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "amount", type: "uint256" },
-      { name: "chainId", type: "uint256" },
-    ],
-    name: "bridge",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "amount", type: "uint256" }],
-    name: "generateVirtualAccount",
-    outputs: [
-      { name: "accountNumber", type: "string" },
-      { name: "bankName", type: "string" },
-      { name: "accountName", type: "string" },
-    ],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "amount", type: "uint256" }],
-    name: "confirmDeposit",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "amount", type: "uint256" }],
-    name: "mintTokens",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "amount", type: "uint256" },
-      { name: "accountNumber", type: "string" },
-      { name: "accountName", type: "string" },
-      { name: "bankName", type: "string" },
-    ],
-    name: "burnTokens",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-]
+import { chainConfigs, TOKEN_DECIMALS } from "./constants"
+import { DEX_ABI, ERC20_ABI } from "./abi/dex-abi"
 
 // Helper function to get ethers provider and signer
 const getProviderAndSigner = async () => {
@@ -83,31 +19,85 @@ const parseCNGNAmount = (amount: string) => {
   return ethers.utils.parseUnits(amount, TOKEN_DECIMALS)
 }
 
-// Approve cNGN to be spent by the DEX contract
-export const approveCNGN = async (amount: string): Promise<string> => {
-  try {
-    const { signer } = await getProviderAndSigner()
-    const cngnContract = new ethers.Contract(
-      CNGN_CONTRACT_ADDRESS,
-      [
-        {
-          constant: false,
-          inputs: [
-            { name: "_spender", type: "address" },
-            { name: "_value", type: "uint256" },
-          ],
-          name: "approve",
-          outputs: [{ name: "", type: "bool" }],
-          payable: false,
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-      ],
-      signer,
-    )
+// Add this helper function to ensure the wallet is on the correct network
+const ensureCorrectNetwork = async (chainId = 1): Promise<boolean> => {
+  if (!window.ethereum) {
+    throw new Error("MetaMask is not installed")
+  }
 
+  const chainIdHex = await window.ethereum.request({
+    method: "eth_chainId",
+  })
+  const currentChainId = Number.parseInt(chainIdHex, 16)
+
+  if (currentChainId !== chainId) {
+    // Prompt the user to switch networks
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: `0x${chainId.toString(16)}` }],
+      })
+      return true
+    } catch (switchError: any) {
+      // This error code indicates that the chain has not been added to MetaMask
+      if (switchError.code === 4902) {
+        try {
+          const network = chainConfigs[chainId]
+          if (!network) {
+            throw new Error(`Network configuration not found for chain ID ${chainId}`)
+          }
+
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: `0x${chainId.toString(16)}`,
+                chainName: network.name,
+                rpcUrls: [network.rpcUrl],
+                nativeCurrency: {
+                  name: "ETH",
+                  symbol: "ETH",
+                  decimals: 18,
+                },
+              },
+            ],
+          })
+
+          // After adding the network, try to switch to it again
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: `0x${chainId.toString(16)}` }],
+          })
+
+          return true
+        } catch (addError) {
+          console.error("Error adding network:", addError)
+          throw new Error(`Failed to add network: ${addError instanceof Error ? addError.message : "Unknown error"}`)
+        }
+      } else {
+        throw new Error(
+          `Please switch your wallet to ${chainConfigs[chainId]?.name || "the correct"} network to continue`,
+        )
+      }
+    }
+  }
+
+  return true
+}
+
+// Approve cNGN to be spent by the DEX contract
+export const approveCNGN = async (amount: string, chainId = 1): Promise<string> => {
+  try {
+    // Ensure wallet is on the correct network
+    await ensureCorrectNetwork(chainId)
+
+    const { signer } = await getProviderAndSigner()
+    const tokenAddress = chainConfigs[chainId]?.tokenAddress
+    const cngnContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer)
+
+    const contractAddress = chainConfigs[chainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
     const parsedAmount = parseCNGNAmount(amount)
-    const tx = await cngnContract.approve(DEX_CONTRACT_ADDRESS, parsedAmount)
+    const tx = await cngnContract.approve(contractAddress, parsedAmount)
 
     await tx.wait()
     return tx.hash
@@ -118,10 +108,11 @@ export const approveCNGN = async (amount: string): Promise<string> => {
 }
 
 // Deposit cNGN to the DEX contract
-export const depositCNGN = async (amount: string): Promise<string> => {
+export const depositCNGN = async (amount: string, chainId = 1): Promise<string> => {
   try {
     const { signer } = await getProviderAndSigner()
-    const dexContract = new ethers.Contract(DEX_CONTRACT_ADDRESS, DEX_ABI, signer)
+    const contractAddress = chainConfigs[chainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
+    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer)
 
     const parsedAmount = parseCNGNAmount(amount)
     const tx = await dexContract.deposit(parsedAmount)
@@ -135,10 +126,11 @@ export const depositCNGN = async (amount: string): Promise<string> => {
 }
 
 // Withdraw USDC from the DEX contract
-export const withdrawUSDC = async (amount: string): Promise<string> => {
+export const withdrawUSDC = async (amount: string, chainId = 1): Promise<string> => {
   try {
     const { signer } = await getProviderAndSigner()
-    const dexContract = new ethers.Contract(DEX_CONTRACT_ADDRESS, DEX_ABI, signer)
+    const contractAddress = chainConfigs[chainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
+    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer)
 
     const parsedAmount = parseCNGNAmount(amount)
     const tx = await dexContract.withdraw(parsedAmount)
@@ -152,13 +144,20 @@ export const withdrawUSDC = async (amount: string): Promise<string> => {
 }
 
 // Bridge cNGN to another chain
-export const bridgeCNGN = async (amount: string, chainId: number): Promise<string> => {
+export const bridgeCNGN = async (amount: string, destinationChainId: number, sourceChainId = 1): Promise<string> => {
   try {
+    // Ensure wallet is on the correct network
+    await ensureCorrectNetwork(sourceChainId)
+
     const { signer } = await getProviderAndSigner()
-    const dexContract = new ethers.Contract(DEX_CONTRACT_ADDRESS, DEX_ABI, signer)
+    const contractAddress = chainConfigs[sourceChainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
+    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer)
+
+    // Generate a unique bridge ID
+    const bridgeId = ethers.utils.randomBytes(32)
 
     const parsedAmount = parseCNGNAmount(amount)
-    const tx = await dexContract.bridge(parsedAmount, chainId)
+    const tx = await dexContract.bridgeFrom(parsedAmount, destinationChainId, bridgeId)
 
     await tx.wait()
     return tx.hash
@@ -236,10 +235,11 @@ export const confirmDeposit = async (amount: string): Promise<void> => {
 }
 
 // Mint tokens after confirmed deposit
-export const mintTokens = async (amount: string): Promise<string> => {
+export const mintTokens = async (amount: string, chainId = 1): Promise<string> => {
   try {
     const { signer } = await getProviderAndSigner()
-    const dexContract = new ethers.Contract(DEX_CONTRACT_ADDRESS, DEX_ABI, signer)
+    const contractAddress = chainConfigs[chainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
+    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer)
 
     // Call your contract's function to mint tokens
     const tx = await dexContract.mintTokens(amount)
@@ -253,30 +253,15 @@ export const mintTokens = async (amount: string): Promise<string> => {
 }
 
 // Approve tokens to be spent by the contract
-export const approveTokens = async (amount: string): Promise<string> => {
+export const approveTokens = async (amount: string, chainId = 1): Promise<string> => {
   try {
     const { signer } = await getProviderAndSigner()
-    const tokenContract = new ethers.Contract(
-      CNGN_CONTRACT_ADDRESS,
-      [
-        {
-          constant: false,
-          inputs: [
-            { name: "_spender", type: "address" },
-            { name: "_value", type: "uint256" },
-          ],
-          name: "approve",
-          outputs: [{ name: "", type: "bool" }],
-          payable: false,
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-      ],
-      signer,
-    )
+    const tokenAddress = chainConfigs[chainId]?.tokenAddress
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer)
 
+    const contractAddress = chainConfigs[chainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
     const parsedAmount = parseCNGNAmount(amount)
-    const tx = await tokenContract.approve(DEX_CONTRACT_ADDRESS, parsedAmount)
+    const tx = await tokenContract.approve(contractAddress, parsedAmount)
     await tx.wait()
 
     return tx.hash
@@ -294,18 +279,21 @@ export const burnTokens = async (
     accountName: string
     bankName: string
   },
+  chainId = 1,
 ): Promise<string> => {
   try {
+    // Ensure wallet is on the correct network
+    await ensureCorrectNetwork(chainId)
+
     const { signer } = await getProviderAndSigner()
-    const dexContract = new ethers.Contract(DEX_CONTRACT_ADDRESS, DEX_ABI, signer)
+    const contractAddress = chainConfigs[chainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
+    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer)
+
+    // Generate a unique offramp ID
+    const offRampId = ethers.utils.randomBytes(32)
 
     // Call your contract's function to burn tokens and initiate fiat transfer
-    const tx = await dexContract.burnTokens(
-      parseCNGNAmount(amount),
-      bankDetails.accountNumber,
-      bankDetails.accountName,
-      bankDetails.bankName,
-    )
+    const tx = await dexContract.withdraw(parseCNGNAmount(amount), offRampId)
 
     await tx.wait()
     return tx.hash
@@ -349,12 +337,13 @@ export const initiateOfframp = async (
     bankName: string
     bankCode: string
   },
+  chainId = 1,
 ): Promise<{
   reference: string
   estimatedTime: string
 }> => {
   try {
-    const response = await initiateOfframpAPI(amount, bankDetails)
+    const response = await initiateOfframpAPI(amount, bankDetails, chainId)
 
     if (!response.status) {
       throw new Error(response.message)
@@ -375,12 +364,13 @@ export const initiateBridge = async (
   amount: string,
   sourceChain: string,
   destinationChain: string,
+  sourceChainId = 1,
 ): Promise<{
   reference: string
   estimatedTime: string
 }> => {
   try {
-    const response = await initiateBridgeAPI(amount, sourceChain, destinationChain)
+    const response = await initiateBridgeAPI(amount, sourceChain, destinationChain, sourceChainId)
 
     if (!response.status) {
       throw new Error(response.message)

@@ -11,6 +11,7 @@ import { CheckCircle2, AlertCircle, Loader2, Copy } from "lucide-react"
 import { Steps, Step } from "@/components/ui/steps"
 import { Card, CardContent } from "@/components/ui/card"
 import { generateVirtualAccountAPI, confirmDepositAPI } from "@/lib/api"
+import { chainConfigs } from "@/config/chain"
 
 interface OnrampFormProps {
   address: string | null
@@ -45,6 +46,48 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
     mobileNumber: "",
   })
 
+  // Add this function at the beginning of the OnrampForm component
+  const ensureCorrectNetwork = async () => {
+    if (!chainId) {
+      setError("Please connect your wallet first")
+      return false
+    }
+
+    if (!window.ethereum) {
+      setError("MetaMask is not installed")
+      return false
+    }
+
+    try {
+      const chainIdHex = await window.ethereum.request({
+        method: "eth_chainId",
+      })
+      const currentChainId = Number.parseInt(chainIdHex, 16)
+
+      if (currentChainId !== chainId) {
+        setError(`Please switch your wallet to ${chainConfigs[chainId].name} network to continue`)
+
+        // Prompt the user to switch networks
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: `0x${chainId.toString(16)}` }],
+          })
+          return true
+        } catch (switchError: any) {
+          console.error("Failed to switch networks:", switchError)
+          return false
+        }
+      }
+
+      return true
+    } catch (error) {
+      console.error("Error checking network:", error)
+      setError("Failed to verify network. Please try again.")
+      return false
+    }
+  }
+
   // Copy to clipboard function
   const copyToClipboard = async (text: string) => {
     try {
@@ -64,11 +107,16 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
     }))
   }
 
+  // Update the handleGenerateAccount function to check network first
   const handleGenerateAccount = async () => {
     if (!address) {
       setError("Please connect your wallet first")
       return
     }
+
+    // Ensure wallet is on the correct network
+    const isCorrectNetwork = await ensureCorrectNetwork()
+    if (!isCorrectNetwork) return
 
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       setError("Please enter a valid amount")
@@ -105,12 +153,14 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
         lastName: userDetails.lastName,
         email: userDetails.email,
         mobileNumber: "REDACTED",
+        chainId: chainId,
       })
 
       const account = await generateVirtualAccountAPI({
         amount,
         userAddress: address,
         ...userDetails,
+        chainId: chainId || 1,
       })
 
       if (!account.status || !account.data) {
@@ -129,17 +179,22 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
     }
   }
 
+  // Update the handleConfirmDeposit function to check network first
   const handleConfirmDeposit = async () => {
     if (!virtualAccount) {
       setError("No virtual account found")
       return
     }
 
+    // Ensure wallet is on the correct network
+    const isCorrectNetwork = await ensureCorrectNetwork()
+    if (!isCorrectNetwork) return
+
     setError(null)
     setIsLoading(true)
 
     try {
-      await confirmDepositAPI(virtualAccount.reference, amount)
+      await confirmDepositAPI(virtualAccount.reference, amount, chainId || 1)
       setCurrentStep(2)
       setSuccess("Deposit confirmed! Your tokens will be minted shortly.")
     } catch (err: any) {

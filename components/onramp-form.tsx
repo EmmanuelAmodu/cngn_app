@@ -11,7 +11,7 @@ import { CheckCircle2, AlertCircle, Loader2, Copy } from "lucide-react"
 import { Steps, Step } from "@/components/ui/steps"
 import { Card, CardContent } from "@/components/ui/card"
 import { generateVirtualAccountAPI, confirmDepositAPI } from "@/lib/api"
-import { chainConfigs } from "@/config/chain"
+import { chainConfigs } from "@/lib/constants"
 
 interface OnrampFormProps {
   address: string | null

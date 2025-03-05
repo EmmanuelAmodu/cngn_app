@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const bridgeId = `0x${randomBytes(32).toString("hex")}`
 
     const { error } = await supabase.from("bridges").insert({
-      id: bridgeId,
+      bridge_id: bridgeId,
       user_address: userAddress,
       amount: Number.parseInt(amount),
       source_chain_id: sourceChainId || 1,

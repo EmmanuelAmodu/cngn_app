@@ -3,6 +3,7 @@ export interface NumeroVirtualAccountRequest {
   lastName: string
   email: string
   mobileNumber: string
+  bvn: string
 }
 
 export interface NumeroVirtualAccountResponse {
@@ -22,4 +23,3 @@ export interface VirtualAccountDetails {
   accountNumber: string
   bankName: string
 }
-

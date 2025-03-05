@@ -12,15 +12,15 @@ import type { Address } from "viem"
 import crypto from "crypto"
 
 const NUMERO_API_URL = process.env.NUMERO_API_URL || "https://api.numero.co"
-const NUMERO_API_KEY = process.env.NUMERO_API_KEY
-const NUMERO_API_SECRET = process.env.NUMERO_API_SECRET
+const NUMERO_API_KEY = process.env.NUMERO_API_KEY as string
+const NUMERO_API_SECRET = process.env.NUMERO_API_SECRET as string
 
 if (!NUMERO_API_KEY || !NUMERO_API_SECRET) {
   throw new Error("Numero API credentials not configured")
 }
 
 function generateSignature(payload: string): string {
-  return crypto.createHmac("sha256", NUMERO_API_SECRET!).update(payload).digest("hex")
+  return crypto.createHmac("sha256", NUMERO_API_SECRET).update(payload).digest("hex")
 }
 
 async function verifyTransaction(reference: string): Promise<boolean> {
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     }
 
     // Validate amount
-    if (typeof amount !== "string" || isNaN(Number(amount)) || Number(amount) <= 0) {
+    if (typeof amount !== "string" || Number.isNaN(Number(amount)) || Number(amount) <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 })
     }
 

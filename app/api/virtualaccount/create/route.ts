@@ -39,21 +39,6 @@ export async function POST(request: Request) {
 
     console.log(`Calling Numero API at ${NUMERO_API_URL}/virtualaccount/customer`)
 
-    // For development/testing, use mock data if in development environment
-    if (process.env.NODE_ENV === "development" && !process.env.FORCE_REAL_API) {
-      console.log("Using mock data for development environment")
-      return NextResponse.json({
-        status: true,
-        message: "Virtual account created successfully",
-        data: {
-          reference: `VA${Date.now()}`,
-          accountName: `${data.firstName} ${data.lastName}`,
-          accountNumber: `${Math.floor(1000000000 + Math.random() * 9000000000)}`,
-          bankName: "Test Bank",
-        },
-      })
-    }
-
     try {
       const response = await fetch(`${NUMERO_API_URL}/virtualaccount/customer`, {
         method: "POST",

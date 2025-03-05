@@ -1,11 +1,20 @@
--- Create onramp_requests table
-create table onramp_requests (
+-- Create virtual_accounts table
+create table virtual_accounts (
   id uuid default uuid_generate_v4() primary key,
-  onramp_id text not null unique,
   user_address text not null,
   account_name text not null,
-  virtual_account text not null,
+  account_number text not null,
   bank_name text not null,
+  reference text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Create onramp table
+create table onramps (
+  id uuid default uuid_generate_v4() primary key,
+  onramp_id text not null unique,
+  account_id text not null references virtual_accounts(id),
+  user_address text not null,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -21,12 +30,11 @@ create table offramps (
 -- Create deposits table
 create table deposits (
   id uuid default uuid_generate_v4() primary key,
-  bank_reference text not null,
   user_address text not null,
   amount integer not null,
   status text not null default 'pending' check (status in ('pending', 'processing', 'completed', 'failed')),
-  bank_payment_reference text,
-  onramp_id text not null references onramp_requests(onramp_id),
+  payment_reference text,
+  onramp_id text not null references onramp(onramp_id),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -47,6 +55,7 @@ create table withdrawals (
 -- Create bridges table
 create table bridges (
   id uuid default uuid_generate_v4() primary key,
+  bridge_id text not null unique,
   user_address text not null,
   amount integer not null,
   source_chain_id integer not null,
@@ -59,13 +68,14 @@ create table bridges (
 );
 
 -- Create indexes
-create index idx_onramp_requests_user_address on onramp_requests(user_address);
+create index idx_onramp_user_address on onramp(user_address);
 create index idx_offramps_user_address on offramps(user_address);
 create index idx_deposits_user_address on deposits(user_address);
 create index idx_withdrawals_user_address on withdrawals(user_address);
 create index idx_bridges_user_address on bridges(user_address);
 create index idx_withdrawals_status on withdrawals(status);
 create index idx_bridges_status on bridges(status);
+create index idx_virtual_accounts_user_address on virtual_accounts(user_address);
 
 -- Add trigger to update updated_at timestamp
 create or replace function update_updated_at_column()

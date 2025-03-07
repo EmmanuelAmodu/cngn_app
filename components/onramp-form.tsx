@@ -47,16 +47,15 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
   })
 
   useEffect(() => {
-    if (!address) {
-      setError("Please connect your wallet first")
-      return
+    if (address) {
+      console.log("Fetching Account")
+      fetchVirtualAccountAPI(address).then(data => {
+        if (data) {
+          setVirtualAccount(data.data)
+          setCurrentStep(1)
+        }
+      }).catch(err => {});
     }
-
-    console.log("Fetching Account")
-    fetchVirtualAccountAPI(address).then(data => {
-      setVirtualAccount(data.data)
-      setCurrentStep(1)
-    }).catch(console.error);
   }, [address])
 
   // Add this function at the beginning of the OnrampForm component

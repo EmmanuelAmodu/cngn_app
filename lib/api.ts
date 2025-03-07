@@ -149,20 +149,23 @@ export const generateVirtualAccountAPI = async (data: VirtualAccountRequest): Pr
 }
 
 export const fetchVirtualAccountAPI = async (userAddress: string) => {
-  const response = await fetch(`/api/virtual-account/${userAddress}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  })
-
-  // console.log(response.test())
-  if (!response.ok) {
-    throw new Error("Failed to fetch virtual account")
+  try {
+    const response = await fetch(`/api/virtual-account/${userAddress}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+  
+    // console.log(response.test())
+    if (response.ok) {
+      const account = await response.json()
+      return account
+    }
+  } catch (error) {
+    console.error("Error fetching virtual account:", error)
+    throw new Error((error as { message: string }).message || "Failed to fetch virtual account")
   }
-
-  const account = await response.json()
-  return account
 }
 
 // Confirm deposit for onramp

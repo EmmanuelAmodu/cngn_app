@@ -10,7 +10,11 @@ if (!NUMERO_API_KEY || !NUMERO_API_SECRET) {
 }
 
 function generateSignature(payload: string): string {
-  return crypto.createHmac("sha256", NUMERO_API_SECRET!).update(payload).digest("hex")
+  if (!NUMERO_API_SECRET) {
+    throw new Error("Numero API secret not configured")
+  }
+
+  return crypto.createHmac("sha256", NUMERO_API_SECRET).update(payload).digest("hex")
 }
 
 export async function POST(request: Request) {
@@ -40,6 +44,10 @@ export async function POST(request: Request) {
     const signature = generateSignature(payload)
 
     // Make the API call to Numero
+    if (!NUMERO_API_KEY) {
+      throw new Error("Numero API key not configured")
+    }
+
     const response = await fetch(`${NUMERO_API_URL}/single`, {
       method: "POST",
       headers: {

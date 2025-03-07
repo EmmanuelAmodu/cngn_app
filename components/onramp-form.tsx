@@ -49,12 +49,18 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
   useEffect(() => {
     if (address) {
       console.log("Fetching Account")
+      setIsLoading(true)
       fetchVirtualAccountAPI(address).then(data => {
         if (data) {
-          setVirtualAccount(data.data)
+          console.log("VA Account data")
+          setVirtualAccount(data)
           setCurrentStep(1)
         }
-      }).catch(err => {});
+
+        setIsLoading(false)
+      }).catch(err => {
+        setIsLoading(false)
+      });
     }
   }, [address])
 

@@ -1,7 +1,6 @@
 -- Create virtual_accounts table
 create table virtual_accounts (
-  id uuid default uuid_generate_v4() primary key,
-  user_address text not null,
+  user_address text not null primary key,
   account_name text not null,
   account_number text not null,
   bank_name text not null,
@@ -11,10 +10,8 @@ create table virtual_accounts (
 
 -- Create onramp table
 create table onramps (
-  id uuid default uuid_generate_v4() primary key,
-  onramp_id text not null unique,
-  account_id uuid not null references virtual_accounts(id),
-  user_address text not null,
+  onramp_id text not null primary key,
+  user_address text not null references virtual_accounts(user_address),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -75,7 +72,6 @@ create index idx_withdrawals_user_address on withdrawals(user_address);
 create index idx_bridges_user_address on bridges(user_address);
 create index idx_withdrawals_status on withdrawals(status);
 create index idx_bridges_status on bridges(status);
-create index idx_virtual_accounts_user_address on virtual_accounts(user_address);
 
 -- Add trigger to update updated_at timestamp
 create or replace function update_updated_at_column()

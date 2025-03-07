@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
     // Save to Supabase
     try {
-      const { error } = await supabaseAdmin.from("onramp_requests").insert({
+      const { error } = await supabaseAdmin.from("onramps").insert({
         onramp_id: onrampId,
         user_address: userAddress,
         account_id: responseData.id,
@@ -92,14 +92,14 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("Onramp initiation successful");
+    console.log("Onramp initiation successful", responseData);
     return NextResponse.json({
       success: true,
       onrampId,
-      virtualAccount: responseData.data.accountNumber,
-      bankName: responseData.data.bankName,
-      accountName: responseData.data.accountName,
-      reference: responseData.data.reference,
+      accountNumber: responseData.account_number,
+      bankName: responseData.bank_name,
+      accountName: responseData.account_name,
+      reference: responseData.reference,
     });
   } catch (error) {
     console.error("Error in onramp initiate:", error);
@@ -126,6 +126,8 @@ async function getOrCreateAccount(
     .eq("user_address", userAddress)
     .single();
 
+  console.log('Account details from db:', accountData)
+
   if (accountData) return accountData;
 
   const responseData = await createVirtualAccount({
@@ -136,21 +138,20 @@ async function getOrCreateAccount(
     bvn: "",
   });
 
-  const { error: creatingError } = await supabaseAdmin
+  const {  data: creationAccountData, error: creatingError } = await supabaseAdmin
     .from("virtual_accounts")
-    .insert({
+    .upsert({
       user_address: userAddress,
       account_number: responseData.data.accountNumber,
       bank_name: responseData.data.bankName,
       account_name: responseData.data.accountName,
       reference: responseData.data.reference,
-    });
+    }).select();
 
-  const { data: savedAccountData, error: savedError } = await supabaseAdmin
-    .from("virtual_accounts")
-    .select("*")
-    .eq("user_address", userAddress)
-    .single();
+  if (creatingError) {
+    console.error(creatingError)
+    throw new Error(creatingError.message)
+  }
 
-  return savedAccountData;
+  return creationAccountData[0];
 }

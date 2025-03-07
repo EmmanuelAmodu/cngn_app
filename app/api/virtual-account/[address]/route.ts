@@ -17,7 +17,13 @@ export async function GET(
     }
 
     if (data.length > 0) {
-      return NextResponse.json(data[0]);
+      return NextResponse.json({
+        success: true,
+        accountNumber: data[0].account_number,
+        bankName: data[0].bank_name,
+        accountName: data[0].account_name,
+        reference: data[0].reference,
+      });
     }
 
     return NextResponse.json({ error: "Account not found" }, { status: 404 });

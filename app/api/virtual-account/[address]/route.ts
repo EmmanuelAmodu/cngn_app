@@ -9,16 +9,15 @@ export async function GET(
     const { data, error } = await supabaseAdmin
       .from("virtual_accounts")
       .select("*")
-      .eq("address", params.address)
-      .single();
+      .eq("user_address", params.address)
 
     if (error) {
       console.error(error)
       return NextResponse.json({ error: "API Error" }, { status: 500 });
     }
 
-    if (data) {
-      return NextResponse.json(data);
+    if (data.length > 0) {
+      return NextResponse.json(data[0]);
     }
 
     return NextResponse.json({ error: "Account not found" }, { status: 404 });

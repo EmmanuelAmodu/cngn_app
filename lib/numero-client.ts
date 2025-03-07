@@ -185,3 +185,42 @@ export async function verifyBankAccount(accountNumber: string, bankCode: string)
       throw new Error(`Error in bank account validation: ${error instanceof Error ? error.message : error}`);
     }
 }
+
+export async function verifyTransaction(reference: string): Promise<boolean> {
+  try {
+    // Get current date and 24 hours ago
+    const endDate = new Date().toISOString()
+    const startDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+    // Prepare the request
+    const url = `${NUMERO_API_URL}/transaction?startDate=${startDate}&endDate=${endDate}&searchBy=${reference}`
+    const signature = generateSignature(url)
+
+    const response = await fetch(url, {
+      headers: {
+        "X-Api-Key": NUMERO_API_KEY,
+        "X-Signature": signature,
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error("Failed to verify transaction")
+    }
+
+    const data = await response.json()
+
+    // Check if the transaction exists and is successful
+    const transaction = data.data.transactions.find(
+      (tx: {
+        reference: string
+        status: string
+        requestState: string
+      }) => tx.reference === reference && tx.status === "Successful" && tx.requestState === "Completed",
+    )
+
+    return !!transaction
+  } catch (error) {
+    console.error("Error verifying transaction:", error)
+    return false
+  }
+}

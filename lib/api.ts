@@ -165,7 +165,6 @@ export const fetchVirtualAccountAPI = async (userAddress: string) => {
 // Confirm deposit for onramp
 export const confirmDepositAPI = async (
   reference: string,
-  amount: string,
   chainId = 1,
 ): Promise<{
   status: boolean
@@ -184,7 +183,6 @@ export const confirmDepositAPI = async (
       body: JSON.stringify({
         bankReference: reference,
         userAddress: window.ethereum.selectedAddress,
-        amount,
         onrampId: reference,
         chainId,
       }),

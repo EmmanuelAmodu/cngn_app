@@ -205,7 +205,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
     setIsLoading(true)
 
     try {
-      await confirmDepositAPI(virtualAccount.reference, "10", chainId || 1)
+      await confirmDepositAPI(virtualAccount.reference, chainId || 1)
       setCurrentStep(2)
       setSuccess("Deposit confirmed! Your tokens will be minted shortly.")
     } catch (err) {
@@ -336,7 +336,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
               </div>
 
               <Button onClick={handleConfirmDeposit} disabled={isLoading} className="w-full">
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}I Have Made The Transfer
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}I Have Made A Transfer
               </Button>
             </CardContent>
           </Card>

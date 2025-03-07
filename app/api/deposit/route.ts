@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
+import { verifyTransaction } from "@/lib/numero-client";
 import {
   publicClient,
   getWalletClient,
@@ -9,58 +10,6 @@ import {
   getPublicClient,
 } from "@/lib/blockchain"
 import type { Address } from "viem"
-import crypto from "crypto"
-
-const NUMERO_API_URL = process.env.NUMERO_API_URL || "https://api.numero.co"
-const NUMERO_API_KEY = process.env.NUMERO_API_KEY as string
-const NUMERO_API_SECRET = process.env.NUMERO_API_SECRET as string
-
-if (!NUMERO_API_KEY || !NUMERO_API_SECRET) {
-  throw new Error("Numero API credentials not configured")
-}
-
-function generateSignature(payload: string): string {
-  return crypto.createHmac("sha256", NUMERO_API_SECRET).update(payload).digest("hex")
-}
-
-async function verifyTransaction(reference: string): Promise<boolean> {
-  try {
-    // Get current date and 24 hours ago
-    const endDate = new Date().toISOString()
-    const startDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-
-    // Prepare the request
-    const url = `${NUMERO_API_URL}/transaction?startDate=${startDate}&endDate=${endDate}&searchBy=${reference}`
-    const signature = generateSignature(url)
-
-    const response = await fetch(url, {
-      headers: {
-        "X-Api-Key": NUMERO_API_KEY,
-        "X-Signature": signature,
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error("Failed to verify transaction")
-    }
-
-    const data = await response.json()
-
-    // Check if the transaction exists and is successful
-    const transaction = data.data.transactions.find(
-      (tx: {
-        reference: string
-        status: string
-        requestState: string
-      }) => tx.reference === reference && tx.status === "Successful" && tx.requestState === "Completed",
-    )
-
-    return !!transaction
-  } catch (error) {
-    console.error("Error verifying transaction:", error)
-    return false
-  }
-}
 
 export async function POST(request: Request) {
   try {

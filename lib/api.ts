@@ -46,7 +46,6 @@ export interface BridgeStatusResponse {
 
 // Add to your existing types
 export interface VirtualAccountRequest {
-  amount: string
   userAddress: string
   firstName: string
   lastName: string
@@ -78,7 +77,6 @@ export interface FundTransferResponse {
 export const generateVirtualAccountAPI = async (data: VirtualAccountRequest): Promise<VirtualAccountResponse> => {
   try {
     console.log("Calling generateVirtualAccountAPI with data:", {
-      amount: data.amount,
       userAddress: data.userAddress,
       firstName: data.firstName,
       lastName: data.lastName,
@@ -87,7 +85,7 @@ export const generateVirtualAccountAPI = async (data: VirtualAccountRequest): Pr
       chainId: data.chainId || 1,
     })
 
-    const response = await fetch("/api/onramp/initiate", {
+    const response = await fetch(`/api/virtual-account/${data.userAddress}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -100,7 +98,7 @@ export const generateVirtualAccountAPI = async (data: VirtualAccountRequest): Pr
 
     let responseData: {
       success: boolean
-      virtualAccount: string
+      accountNumber: string
       bankName: string
       accountName: string
       reference: string
@@ -125,17 +123,13 @@ export const generateVirtualAccountAPI = async (data: VirtualAccountRequest): Pr
       throw new Error(responseData.error || "Failed to generate virtual account")
     }
 
-    console.log("Virtual account generated successfully:", {
-      accountNumber: responseData.virtualAccount,
-      bankName: responseData.bankName,
-      accountName: responseData.accountName,
-    })
+    console.log("Virtual account generated successfully:", responseData)
 
     return {
       status: true,
       message: "Virtual account generated successfully",
       data: {
-        accountNumber: responseData.virtualAccount,
+        accountNumber: responseData.accountNumber,
         bankName: responseData.bankName,
         accountName: responseData.accountName,
         reference: responseData.reference,

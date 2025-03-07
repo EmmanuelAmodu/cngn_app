@@ -33,7 +33,6 @@ interface UserDetails {
 }
 
 export default function OnrampForm({ address, chainId }: OnrampFormProps) {
-  const [amount, setAmount] = useState("")
   const [currentStep, setCurrentStep] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -136,11 +135,6 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
     const isCorrectNetwork = await ensureCorrectNetwork()
     if (!isCorrectNetwork) return
 
-    if (!amount || Number.isNaN(Number(amount)) || Number(amount) <= 0) {
-      setError("Please enter a valid amount")
-      return
-    }
-
     // Validate user details
     if (!userDetails.firstName || !userDetails.lastName || !userDetails.email || !userDetails.mobileNumber) {
       setError("Please fill in all required fields")
@@ -165,7 +159,6 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 
     try {
       console.log("Generating virtual account with details:", {
-        amount,
         userAddress: address,
         firstName: userDetails.firstName,
         lastName: userDetails.lastName,
@@ -175,7 +168,6 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
       })
 
       const account = await generateVirtualAccountAPI({
-        amount,
         userAddress: address,
         ...userDetails,
         chainId: chainId || 1,
@@ -186,6 +178,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
       }
 
       setVirtualAccount(account.data)
+      console.log(account)
       setCurrentStep(1)
       setSuccess("Virtual account generated successfully!")
     } catch (err) {
@@ -212,7 +205,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
     setIsLoading(true)
 
     try {
-      await confirmDepositAPI(virtualAccount.reference, amount, chainId || 1)
+      await confirmDepositAPI(virtualAccount.reference, "10", chainId || 1)
       setCurrentStep(2)
       setSuccess("Deposit confirmed! Your tokens will be minted shortly.")
     } catch (err) {
@@ -243,18 +236,6 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
         {currentStep === 0 && (
           <Card>
             <CardContent className="pt-6 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="amount">Amount (NGN)</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  placeholder="Enter amount in NGN"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>
                 <Input
@@ -348,7 +329,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
               <div className="pt-4">
                 <Alert className="bg-blue-50 text-blue-800 border-blue-200">
                   <AlertDescription>
-                    Please transfer {amount} NGN to the virtual account above. Once you've made the transfer, click the
+                    Please transfer above 5,000 NGN to the virtual account above. Once you've made the transfer, click the
                     button below.
                   </AlertDescription>
                 </Alert>

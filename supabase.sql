@@ -13,7 +13,7 @@ create table virtual_accounts (
 create table onramps (
   id uuid default uuid_generate_v4() primary key,
   onramp_id text not null unique,
-  account_id text not null references virtual_accounts(id),
+  account_id uuid not null references virtual_accounts(id),
   user_address text not null,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -34,7 +34,7 @@ create table deposits (
   amount integer not null,
   status text not null default 'pending' check (status in ('pending', 'processing', 'completed', 'failed')),
   payment_reference text,
-  onramp_id text not null references onramp(onramp_id),
+  onramp_id text not null references onramps(onramp_id),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -68,7 +68,7 @@ create table bridges (
 );
 
 -- Create indexes
-create index idx_onramp_user_address on onramp(user_address);
+create index idx_onramp_user_address on onramps(user_address);
 create index idx_offramps_user_address on offramps(user_address);
 create index idx_deposits_user_address on deposits(user_address);
 create index idx_withdrawals_user_address on withdrawals(user_address);
@@ -103,4 +103,3 @@ create trigger update_deposits_updated_at
     before update on deposits
     for each row
     execute function update_updated_at_column();
-

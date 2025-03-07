@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle2, AlertCircle, Loader2, Copy } from "lucide-react"
 import { Steps, Step } from "@/components/ui/steps"
 import { Card, CardContent } from "@/components/ui/card"
-import { generateVirtualAccountAPI, confirmDepositAPI } from "@/lib/api"
+import { generateVirtualAccountAPI, confirmDepositAPI, fetchVirtualAccountAPI } from "@/lib/api"
 import { chainConfigs } from "@/lib/constants"
 
 interface OnrampFormProps {
@@ -45,6 +45,19 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
     email: "",
     mobileNumber: "",
   })
+
+  useEffect(() => {
+    if (!address) {
+      setError("Please connect your wallet first")
+      return
+    }
+
+    console.log("Fetching Account")
+    fetchVirtualAccountAPI(address).then(data => {
+      setVirtualAccount(data.data)
+      setCurrentStep(1)
+    }).catch(console.error);
+  }, [address])
 
   // Add this function at the beginning of the OnrampForm component
   const ensureCorrectNetwork = async () => {
@@ -369,4 +382,3 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
     </div>
   )
 }
-

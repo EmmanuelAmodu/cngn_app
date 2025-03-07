@@ -13,7 +13,8 @@ export async function GET(
       .single();
 
     if (error) {
-      throw error;
+      console.error(error)
+      return NextResponse.json({ error: "API Error" }, { status: 500 });
     }
 
     if (data) {

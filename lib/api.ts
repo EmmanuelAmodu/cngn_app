@@ -98,7 +98,16 @@ export const generateVirtualAccountAPI = async (data: VirtualAccountRequest): Pr
     const responseText = await response.text()
     console.log(`API response status: ${response.status}`)
 
-    let responseData: unknown
+    let responseData: {
+      success: boolean
+      virtualAccount: string
+      bankName: string
+      accountName: string
+      reference: string
+      error?: string
+      details?: string
+    }
+  
     try {
       responseData = JSON.parse(responseText)
     } catch (e) {
@@ -137,6 +146,23 @@ export const generateVirtualAccountAPI = async (data: VirtualAccountRequest): Pr
     console.error("Error generating virtual account:", error)
     throw error
   }
+}
+
+export const fetchVirtualAccountAPI = async (userAddress: string) => {
+  const response = await fetch(`/api/virtual-account/${userAddress}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+
+  // console.log(response.test())
+  if (!response.ok) {
+    throw new Error("Failed to fetch virtual account")
+  }
+
+  const account = await response.json()
+  return account
 }
 
 // Confirm deposit for onramp
@@ -224,9 +250,7 @@ export const verifyBankAccountAPI = async (
       data: {
         accountNumber: data.data.accountNumber,
         accountName: data.data.accountName,
-        bankName: "", // This will be populated from our banks list
-        bankCode: data.data.bankCode,
-        fees: data.data.fees,
+        bankName: data.data.bankName, // Use the bank name from the API response
         isValid: true,
       },
     }

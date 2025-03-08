@@ -13,8 +13,10 @@ create table onramps (
   onramp_id text not null primary key,
   user_address text not null references virtual_accounts(user_address),
   amount integer not null,
+  chain_id integer,
+  on_chain_tx text,
   status text not null default 'pending' check (status in ('pending', 'processing', 'completed', 'failed')),
-  payment_reference text unique nulls not distinct,
+  payment_reference text unique,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -25,7 +27,9 @@ create table offramps (
   user_address text not null,
   bank_account text not null,
   bank_code text not null,
-  bank_transfer_reference text unique nulls not distinct,
+  chain_id integer,
+  on_chain_tx text,
+  bank_transfer_reference text unique,
   amount integer not null,
   status text not null default 'pending' check (status in ('pending', 'processing', 'completed', 'failed')),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,

@@ -1,17 +1,32 @@
-import { createHmac } from "node:crypto"
+import { createHmac, timingSafeEqual } from "node:crypto"
 import type { NumeroVirtualAccountRequest, NumeroVirtualAccountResponse } from "./types/numero"
 
 const NUMERO_API_URL = process.env.NUMERO_API_URL || "https://api.getnumero.co"
 const NUMERO_API_KEY = process.env.NUMERO_API_KEY as string
 const NUMERO_API_SECRET = process.env.NUMERO_API_SECRET as string
+const NUMERO_WEBHOOK_SECRET = process.env.NUMERO_WEBHOOK_SECRET as string
 const BVN = process.env.NUMERO_BVN as string
 
-if (!NUMERO_API_KEY || !NUMERO_API_SECRET) {
+if (!NUMERO_API_KEY || !NUMERO_API_SECRET || !NUMERO_WEBHOOK_SECRET) {
   throw new Error("Numero API credentials not configured")
 }
 
 function generateSignature(payload: string): string {
   return createHmac("sha256", NUMERO_API_SECRET).update(payload).digest("hex")
+}
+
+export async function verifyWebhookSignature(
+  payload: string,
+  signature: string,
+) {
+  const hmac = createHmac("sha256", NUMERO_WEBHOOK_SECRET);
+  const computedSignature = hmac.update(payload).digest("base64");
+
+  // Use constant-time comparison
+  return timingSafeEqual(
+    Buffer.from(computedSignature),
+    Buffer.from(signature)
+  );
 }
 
 export async function createVirtualAccount(data: NumeroVirtualAccountRequest): Promise<NumeroVirtualAccountResponse> {

@@ -39,6 +39,7 @@
     "@radix-ui/react-tooltip": "^1.1.6",
     "@supabase/supabase-js": "latest",
     "autoprefixer": "^10.4.20",
+    "bull": "^4.16.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
@@ -63,6 +64,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/bull": "^3.15.9",
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",

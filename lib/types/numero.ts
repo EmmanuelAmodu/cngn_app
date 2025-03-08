@@ -23,3 +23,18 @@ export interface VirtualAccountDetails {
   accountNumber: string
   bankName: string
 }
+
+export interface WebhookRequest {
+  id: string
+  event: string
+  created_at: string
+  data: {
+    transaction_id: string
+    amount: string
+    currency: string
+    status: string
+    customer_id: string
+    description: string
+  }
+  signature: string
+}

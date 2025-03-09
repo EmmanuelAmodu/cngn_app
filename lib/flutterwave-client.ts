@@ -132,7 +132,7 @@ export async function verifyBankAccount(
   account_name: string;
 }> {
   try {
-    const url = `${FLUTTERWAVE_API_URL}/resolve/account`;
+    const url = `${FLUTTERWAVE_API_URL}/accounts/resolve`;
     const options = {
       method: "POST",
       headers: {
@@ -156,12 +156,7 @@ export async function verifyBankAccount(
         errorText
       );
 
-      try {
-        const errorData = JSON.parse(errorText);
-        throw new Error(errorData.error || "Failed to validate bank account");
-      } catch (e) {
-        throw new Error(`Failed to validate bank account: ${errorText}`);
-      }
+      throw new Error(`Failed to validate bank account: ${errorText}`);
     }
 
     const responseData: FlutterResponse<{

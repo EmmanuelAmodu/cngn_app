@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { createVirtualAccount } from "@/lib/numero-client";
 import { randomBytes } from "crypto";
+import { createVirtualAccount } from "@/lib/flutterwave-client";
 
 export async function GET(
   request: Request,
@@ -126,21 +126,19 @@ async function getOrCreateAccount(
   if (accountData) return accountData;
 
   const responseData = await createVirtualAccount({
-    firstName,
-    lastName,
     email,
-    mobileNumber,
-    bvn: "",
+    userAddress,
+    name: `${firstName} ${lastName}`,
   });
 
   const {  data: creationAccountData, error: creatingError } = await supabaseAdmin
     .from("virtual_accounts")
     .upsert({
       user_address: userAddress,
-      account_number: responseData.data.accountNumber,
-      bank_name: responseData.data.bankName,
-      account_name: responseData.data.accountName,
-      reference: responseData.data.reference,
+      account_number: responseData.account_number,
+      bank_name: responseData.bank_name,
+      account_name: `${firstName} ${lastName}`,
+      reference: responseData.order_ref,
     }).select();
 
   if (creatingError) {

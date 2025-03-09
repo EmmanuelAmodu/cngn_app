@@ -169,3 +169,7 @@ async function commitOnChain(
     throw error;
   }
 }
+
+function pollTransaction() {
+  
+}

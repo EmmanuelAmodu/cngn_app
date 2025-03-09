@@ -1,9 +1,9 @@
+import { verifyBankAccount } from "@/lib/flutterwave-client"
 import { NextResponse } from "next/server"
-import { verifyBankAccount } from "@/lib/numero-client"
 
 export async function POST(request: Request) {
   try {
-    const { accountNumber, bankCode, amount } = await request.json()
+    const { accountNumber, bankCode } = await request.json()
 
     if (!accountNumber || !bankCode) {
       return NextResponse.json({ error: "Account number and bank code are required" }, { status: 400 })
@@ -15,9 +15,9 @@ export async function POST(request: Request) {
       status: true,
       message: "Account validated successfully",
       data: {
-        accountNumber: data.accountNumber,
-        accountName: data.accountName,
-        bankCode: data.bankCode,
+        accountNumber: data.account_number,
+        accountName: data.account_name,
+        bankCode,
         isValid: true,
       },
     })

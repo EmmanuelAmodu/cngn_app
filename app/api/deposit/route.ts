@@ -15,7 +15,7 @@ import { randomBytes } from "crypto";
 
 const REDIS_URL = process.env.REDIS_URL;
 if (!REDIS_URL) {
-  throw new Error('Redis URL not defined');
+  throw new Error("Redis URL not defined");
 }
 
 const onrampQueue = new Bull("onramp_queue", {
@@ -60,10 +60,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
   }
 
+  const { error: fetchError, data: deposits } = await supabaseAdmin
+    .from("onramps")
+    .select("*")
+    .eq("user_address", userAddress)
+    .eq("status", "pending");
+
+  if (fetchError) {
+    console.error("Error fetching deposits:", fetchError);
+    return NextResponse.json({ error: "Failed to fetch deposits" }, { status: 500 });
+  }
+
   await onrampQueue.add({ userAddress, chainId });
 
   return NextResponse.json({
     success: true,
+    data: deposits,
   });
 }
 
@@ -178,10 +190,10 @@ let shouldPoll = true;
 
 async function pollTransaction() {
   const date = new Date();
-  const today = date.toISOString().split('T')[0];
+  const today = date.toISOString().split("T")[0];
 
   date.setDate(date.getDate() - 1);
-  const yesterday = date.toISOString().split('T')[0];
+  const yesterday = date.toISOString().split("T")[0];
 
   let page = 1;
   while (true) {
@@ -189,7 +201,7 @@ async function pollTransaction() {
       yesterday,
       today,
       page,
-      'successful'
+      "successful"
     );
 
     if (page === response.meta.page_info.total_pages) {
@@ -200,26 +212,28 @@ async function pollTransaction() {
 
     for (const transaction of response.data) {
       const { flw_ref, status, amount, tx_ref } = transaction;
-      if (status !== 'successful') {
+      if (status !== "successful") {
         continue;
       }
 
       const { data } = await supabaseAdmin
-        .from('onramps')
-        .select('onramp_id')
-        .eq('payment_reference', flw_ref)
+        .from("onramps")
+        .select("onramp_id")
+        .eq("payment_reference", flw_ref)
         .single();
 
       if (data) continue;
-      const { error: createError } = await supabaseAdmin.from('onramps').insert({
-        onramp_id:  `0x${randomBytes(32).toString("hex")}`,
-        payment_reference: flw_ref,
-        user_address: tx_ref,
-        amount,
-      });
+      const { error: createError } = await supabaseAdmin
+        .from("onramps")
+        .insert({
+          onramp_id: `0x${randomBytes(32).toString("hex")}`,
+          payment_reference: flw_ref,
+          user_address: tx_ref,
+          amount,
+        });
 
       if (createError) {
-        console.error('Error saving onramp:', createError);
+        console.error("Error saving onramp:", createError);
         throw createError;
       }
     }

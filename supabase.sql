@@ -16,7 +16,7 @@ create table onramps (
   chain_id integer,
   on_chain_tx text,
   status text not null default 'pending' check (status in ('pending', 'processing', 'completed', 'failed')),
-  payment_reference text unique,
+  payment_reference text not null unique,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );

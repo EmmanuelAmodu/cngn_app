@@ -10,6 +10,8 @@ import {
 } from "@/lib/blockchain";
 import type { Address, Hex } from "viem";
 import Bull, { type Job } from "bull";
+import { getTransactions } from "@/lib/flutterwave-client";
+import { randomBytes } from "crypto";
 
 const REDIS_URL = process.env.REDIS_URL;
 if (!REDIS_URL) {
@@ -19,6 +21,8 @@ if (!REDIS_URL) {
 const onrampQueue = new Bull("onramp_queue", {
   redis: REDIS_URL,
 });
+
+pollTransaction();
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -170,6 +174,64 @@ async function commitOnChain(
   }
 }
 
-function pollTransaction() {
-  
+let shouldPoll = true;
+
+async function pollTransaction() {
+  const date = new Date();
+  const today = date.toISOString().split('T')[0];
+
+  date.setDate(date.getDate() - 1);
+  const yesterday = date.toISOString().split('T')[0];
+
+  let page = 1;
+  while (true) {
+    const response = await getTransactions(
+      yesterday,
+      today,
+      page,
+      'successful'
+    );
+
+    if (page === response.meta.page_info.total_pages) {
+      break;
+    }
+
+    page += 1;
+
+    for (const transaction of response.data) {
+      const { flw_ref, status, amount, tx_ref } = transaction;
+      if (status !== 'successful') {
+        continue;
+      }
+
+      const { data } = await supabaseAdmin
+        .from('onramps')
+        .select('onramp_id')
+        .eq('payment_reference', flw_ref)
+        .single();
+
+      if (data) continue;
+      const { error: createError } = await supabaseAdmin.from('onramps').insert({
+        onramp_id:  `0x${randomBytes(32).toString("hex")}`,
+        payment_reference: flw_ref,
+        user_address: tx_ref,
+        amount,
+      });
+
+      if (createError) {
+        console.error('Error saving onramp:', createError);
+        throw createError;
+      }
+    }
+  }
+
+  setTimeout(async () => {
+    if (shouldPoll) {
+      await pollTransaction();
+    }
+  }, 30000);
+}
+
+export function stopPolling() {
+  shouldPoll = false;
 }

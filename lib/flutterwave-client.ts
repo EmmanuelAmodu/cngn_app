@@ -82,16 +82,21 @@ export async function createVirtualAccount(
   }
 }
 
-export async function getTransactions(from: string, to: string, page: number, status: string): Promise<FlutterTransactionResponse> {
+export async function getTransactions(
+  from: string,
+  to: string,
+  page: number,
+  status: "pending" | "successful"
+): Promise<FlutterTransactionResponse> {
   try {
-    const url = `${FLUTTERWAVE_API_URL}/transactions?from=${from}&to=${to}&page=${page}&status=successful&currency=NGN`;
+    const url = `${FLUTTERWAVE_API_URL}/transactions?from=${from}&to=${to}&page=${page}&status=${status}&currency=NGN`;
     const options = {
-      method: 'GET',
+      method: "GET",
       headers: {
         accept: "application/json",
         Authorization: `Bearer ${FLUTTERWAVE_SECRET_KEY}`,
         "Content-Type": "application/json",
-      }
+      },
     };
 
     const response = await fetch(url, options);
@@ -112,15 +117,17 @@ export async function getTransactions(from: string, to: string, page: number, st
     console.log("Transaction fetching response:", responseData);
 
     if (!responseData.status) {
-      throw new Error(
-        responseData.message || "Failed to fetch Transaction"
-      );
+      throw new Error(responseData.message || "Failed to fetch Transaction");
     }
 
     return responseData;
   } catch (error) {
     console.error("Error fetching transaction:", error);
-    throw new Error(`Error fetching transaction: ${error instanceof Error ? error.message : error}`);
+    throw new Error(
+      `Error fetching transaction: ${
+        error instanceof Error ? error.message : error
+      }`
+    );
   }
 }
 

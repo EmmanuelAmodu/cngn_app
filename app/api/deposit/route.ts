@@ -51,7 +51,6 @@ export async function POST(request: Request) {
 
   // Validate amount
   if (
-    typeof chainId !== "string" ||
     Number.isNaN(Number(chainId)) ||
     Number(chainId) <= 0
   ) {

@@ -1,4 +1,4 @@
-import { verifyBankAccount } from "@/lib/flutterwave-client"
+import { verifyBankAccount } from "@/lib/paystack-client"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {

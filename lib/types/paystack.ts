@@ -173,3 +173,12 @@ export interface PaystackTransactionSource {
   identifier: string | null;
   entry_point: string;
 };
+
+export interface PaystackResolveAccountResponse {
+  status: boolean;
+  message: string;
+  data: {
+    account_number: string;
+    account_name: string;
+  };
+};

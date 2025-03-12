@@ -2,6 +2,7 @@ import type {
   PaystackCreateCustomerRequest,
   PaystackCreateCustomerResponse,
   PaystackCreateCustomerVirtualAccountResponse,
+  PaystackResolveAccountResponse,
   PaystackTransactionResponse,
 } from "./types/paystack";
 
@@ -188,6 +189,47 @@ export async function getCustomerTransactions(customerId: number) {
     console.error("Error fetching customer transactions:", error);
     throw new Error(
       `Error fetching customer transactions: ${
+        error instanceof Error ? error.message : error
+      }`
+    );
+  }
+}
+
+export async function verifyBankAccount(accountNumber: string, bankCode: string) {
+  try {
+    const url = `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`;
+
+    const options = {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        "Content-Type": "application/json",
+      },
+    };
+
+    const response = await fetch(url, options);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Bank account verification failed:", response.status, errorText);
+
+      try {
+        const errorData = JSON.parse(errorText);
+        throw new Error(errorData.error || "Failed to verify bank account");
+      } catch (e) {
+        throw new Error(`Failed to verify bank account: ${errorText}`);
+      }
+    }
+
+    const responseData: PaystackResolveAccountResponse = await response.json();
+    console.log("Bank account verification response:", responseData);
+  
+    return responseData.data;
+  } catch (error) {
+    console.error("Error verifying bank account:", error);
+    throw new Error(
+      `Error verifying bank account: ${
         error instanceof Error ? error.message : error
       }`
     );

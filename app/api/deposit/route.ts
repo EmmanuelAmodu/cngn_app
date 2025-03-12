@@ -10,7 +10,6 @@ import {
 } from "@/lib/blockchain";
 import type { Address, Hex } from "viem";
 import Bull, { type Job } from "bull";
-import { getTransactions } from "@/lib/flutterwave-client";
 import { randomBytes } from "crypto";
 import { getCustomerTransactions } from "@/lib/paystack-client";
 

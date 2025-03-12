@@ -12,6 +12,7 @@ import type { Address, Hex } from "viem";
 import Bull, { type Job } from "bull";
 import { getTransactions } from "@/lib/flutterwave-client";
 import { randomBytes } from "crypto";
+import { getCustomerTransactions } from "@/lib/paystack-client";
 
 const REDIS_URL = process.env.REDIS_URL;
 if (!REDIS_URL) {
@@ -21,8 +22,6 @@ if (!REDIS_URL) {
 const onrampQueue = new Bull("onramp_queue", {
   redis: REDIS_URL,
 });
-
-pollTransaction();
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -60,6 +59,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
   }
 
+  const {  data: accountData, error: accountDataError } = await supabaseAdmin
+    .from("virtual_accounts")
+    .select("*")
+    .eq("user_address", userAddress)
+    .single();
+
+  if (accountDataError) {
+    console.error("Error fetching account data:", accountDataError);
+    return NextResponse.json(
+      { error: "Failed to fetch account data" },
+      { status: 500 }
+    );
+  }
+
+  await getUsersLatestTransaction(userAddress, Number(accountData.reference));
+
   const { error: fetchError, data: deposits } = await supabaseAdmin
     .from("onramps")
     .select("*")
@@ -68,7 +83,10 @@ export async function POST(request: Request) {
 
   if (fetchError) {
     console.error("Error fetching deposits:", fetchError);
-    return NextResponse.json({ error: "Failed to fetch deposits" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch deposits" },
+      { status: 500 }
+    );
   }
 
   await onrampQueue.add({ userAddress, chainId });
@@ -186,66 +204,32 @@ async function commitOnChain(
   }
 }
 
-let shouldPoll = true;
+async function getUsersLatestTransaction(userAddress: string, customerId: number) {
+  const response = await getCustomerTransactions(customerId);
 
-async function pollTransaction() {
-  const date = new Date();
-  const today = date.toISOString().split("T")[0];
-
-  date.setDate(date.getDate() - 1);
-  const yesterday = date.toISOString().split("T")[0];
-
-  let page = 1;
-  while (true) {
-    const response = await getTransactions(
-      yesterday,
-      today,
-      page,
-      "successful"
-    );
-
-    if (page === response.meta.page_info.total_pages) {
-      break;
+  for (const transaction of response) {
+    const { status, amount, id } = transaction;
+    if (status !== "success") {
+      continue;
     }
 
-    page += 1;
+    const { data } = await supabaseAdmin
+      .from("onramps")
+      .select("onramp_id")
+      .eq("payment_reference", id)
+      .single();
 
-    for (const transaction of response.data) {
-      const { flw_ref, status, amount, tx_ref } = transaction;
-      if (status !== "successful") {
-        continue;
-      }
+    if (data) continue;
+    const { error: createError } = await supabaseAdmin.from("onramps").insert({
+      onramp_id: `0x${randomBytes(32).toString("hex")}`,
+      payment_reference: id,
+      user_address: userAddress,
+      amount,
+    });
 
-      const { data } = await supabaseAdmin
-        .from("onramps")
-        .select("onramp_id")
-        .eq("payment_reference", flw_ref)
-        .single();
-
-      if (data) continue;
-      const { error: createError } = await supabaseAdmin
-        .from("onramps")
-        .insert({
-          onramp_id: `0x${randomBytes(32).toString("hex")}`,
-          payment_reference: flw_ref,
-          user_address: tx_ref,
-          amount,
-        });
-
-      if (createError) {
-        console.error("Error saving onramp:", createError);
-        throw createError;
-      }
+    if (createError) {
+      console.error("Error saving onramp:", createError);
+      throw createError;
     }
   }
-
-  setTimeout(async () => {
-    if (shouldPoll) {
-      await pollTransaction();
-    }
-  }, 30000);
-}
-
-export function stopPolling() {
-  shouldPoll = false;
 }

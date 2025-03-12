@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { randomBytes } from "crypto";
-import { createVirtualAccount } from "@/lib/flutterwave-client";
+import { createCustomer, createCustomerVirtualAccount } from "@/lib/paystack-client";
 
 export async function GET(
   request: Request,
@@ -71,10 +70,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate onrampId
-    const onrampId = `0x${randomBytes(32).toString("hex")}`;
-    console.log("Generated onrampId:", onrampId);
-
     // Create virtual account via our API endpoint
     console.log("Calling virtual account creation endpoint");
 
@@ -90,7 +85,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      onrampId,
       accountNumber: responseData.account_number,
       bankName: responseData.bank_name,
       accountName: responseData.account_name,
@@ -125,20 +119,23 @@ async function getOrCreateAccount(
 
   if (accountData) return accountData;
 
-  const responseData = await createVirtualAccount({
+  const createCustomerResponseData = await createCustomer({
     email,
-    userAddress,
-    name: `${firstName} ${lastName}`,
+    phone: mobileNumber,
+    firstName,
+    lastName
   });
+
+  const responseData = await createCustomerVirtualAccount(createCustomerResponseData.id);
 
   const {  data: creationAccountData, error: creatingError } = await supabaseAdmin
     .from("virtual_accounts")
     .upsert({
       user_address: userAddress,
       account_number: responseData.account_number,
-      bank_name: responseData.bank_name,
-      account_name: `${firstName} ${lastName}`,
-      reference: responseData.order_ref,
+      bank_name: responseData.bank.name,
+      account_name: responseData.account_name,
+      reference: responseData.id.toString(),
     }).select();
 
   if (creatingError) {

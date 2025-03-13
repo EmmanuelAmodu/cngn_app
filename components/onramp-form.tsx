@@ -12,7 +12,7 @@ import { Steps, Step } from "@/components/ui/steps"
 import { Card, CardContent } from "@/components/ui/card"
 import { generateVirtualAccountAPI, confirmDepositAPI, fetchVirtualAccountAPI } from "@/lib/api"
 import { chainConfigs } from "@/lib/constants"
-import TransactionsTable, { type TransactionTableProps } from "./transactions-table"
+import TransactionsTable, { type TransactionTableData } from "./transactions-table"
 
 interface OnrampFormProps {
   address: string | null
@@ -45,7 +45,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
     email: "",
     mobileNumber: "",
   })
-  const [onRampTransactions, setOnRampTransactions] = useState<TransactionTableProps[]>([])
+  const [onRampTransactions, setOnRampTransactions] = useState<TransactionTableData[]>([])
 
   useEffect(() => {
     if (address) {
@@ -355,7 +355,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
               </AlertDescription>
             </Alert>
 
-            <TransactionsTable {...onRampTransactions} />
+            <TransactionsTable transactions={onRampTransactions} />
           </div>
         )}
 

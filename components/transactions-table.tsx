@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 
-export interface TransactionTableProps {
+export interface TransactionTableData {
   amount: number;
   chain_id: number;
   created_at: string; // ISO timestamp
@@ -21,7 +21,11 @@ export interface TransactionTableProps {
   user_address: string;
 };
 
-export default function TransactionsTable(transactions: TransactionTableProps[]) {
+interface TransactionsTableProps {
+  transactions: TransactionTableData[]
+}
+
+export default function TransactionsTable({transactions}: TransactionsTableProps) {
   const [activeFilter, setActiveFilter] = useState("all")
 
   // Filter transactions based on active filter

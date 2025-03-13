@@ -208,7 +208,6 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 
     try {
       const response = await confirmDepositAPI(virtualAccount.reference, chainId || 1)
-      console.log("Confirm deposit response:", response.data)
       setOnRampTransactions(response.data)
       setCurrentStep(2)
       setSuccess("Deposit confirmed! Your tokens will be minted shortly.")

@@ -135,7 +135,7 @@ async function getOrCreateAccount(
       account_number: responseData.account_number,
       bank_name: responseData.bank.name,
       account_name: responseData.account_name,
-      reference: responseData.id.toString(),
+      reference: createCustomerResponseData.id.toString(),
     }).select();
 
   if (creatingError) {

@@ -221,7 +221,7 @@ async function getUsersLatestTransaction(userAddress: string, customerId: number
       onramp_id: `0x${randomBytes(32).toString("hex")}`,
       payment_reference: id,
       user_address: userAddress,
-      amount,
+      amount: amount / 100,
     });
 
     if (createError) {

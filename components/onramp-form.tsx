@@ -344,12 +344,16 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
         )}
 
         {currentStep === 2 && (
-          <Alert className="bg-green-50 text-green-800 border-green-200">
-            <CheckCircle2 className="h-4 w-4" />
-            <AlertDescription>
-              Your transfer has been confirmed! Your tokens will be minted and sent to your wallet shortly.
-            </AlertDescription>
-          </Alert>
+          <div>
+            <Alert className="bg-green-50 text-green-800 border-green-200">
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertDescription>
+                Your transfer has been confirmed! Your tokens will be minted and sent to your wallet shortly.
+              </AlertDescription>
+            </Alert>
+
+            <TransactionsTable />
+          </div>
         )}
 
         {error && (
@@ -360,14 +364,10 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
         )}
 
         {success && !error && currentStep < 2 && (
-          <div>
-            <Alert className="bg-green-50 text-green-800 border-green-200">
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-
-            <TransactionsTable />
-          </div>
+          <Alert className="bg-green-50 text-green-800 border-green-200">
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>{success}</AlertDescription>
+          </Alert>
         )}
       </div>
     </div>

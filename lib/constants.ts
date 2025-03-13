@@ -17,38 +17,38 @@ export const chainConfigs: {
     chain: Chain;
   };
 } = {
-  1: {
-    name: "Ethereum",
-    tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
-    contractAddress: "0x1234567890123456789012345678901234567890",
-    rpcUrl: "https://eth.drpc.org/",
-    chain: mainnet,
-  },
-  137: {
-    name: "Polygon",
-    tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
-    contractAddress: "0x1234567890123456789012345678901234567890",
-    rpcUrl: "wss://polygon.drpc.org",
-    chain: polygon,
-  },
-  42161: {
-    name: "Arbitrum",
-    tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
-    contractAddress: "0x1234567890123456789012345678901234567890",
-    rpcUrl: "https://arbitrum.drpc.org/",
-    chain: arbitrum,
-  },
-  10: {
-    name: "Optimism",
-    tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
-    contractAddress: "0x1234567890123456789012345678901234567890",
-    rpcUrl: "https://optimism.drpc.org/",
-    chain: optimism,
-  },
+  // 1: {
+  //   name: "Ethereum",
+  //   tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
+  //   contractAddress: "0x0e85B746fbB2d1848a86CE83786E4E778C68228A",
+  //   rpcUrl: "https://eth.drpc.org/",
+  //   chain: mainnet,
+  // },
+  // 137: {
+  //   name: "Polygon",
+  //   tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
+  //   contractAddress: "0x0e85B746fbB2d1848a86CE83786E4E778C68228A",
+  //   rpcUrl: "wss://polygon.drpc.org",
+  //   chain: polygon,
+  // },
+  // 42161: {
+  //   name: "Arbitrum",
+  //   tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
+  //   contractAddress: "0x0e85B746fbB2d1848a86CE83786E4E778C68228A",
+  //   rpcUrl: "https://arbitrum.drpc.org/",
+  //   chain: arbitrum,
+  // },
+  // 10: {
+  //   name: "Optimism",
+  //   tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
+  //   contractAddress: "0x0e85B746fbB2d1848a86CE83786E4E778C68228A",
+  //   rpcUrl: "https://optimism.drpc.org/",
+  //   chain: optimism,
+  // },
   8453: {
     name: "Base",
     tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
-    contractAddress: "0x1234567890123456789012345678901234567890",
+    contractAddress: "0x0e85B746fbB2d1848a86CE83786E4E778C68228A",
     rpcUrl: "https://base.drpc.org/",
     chain: base,
   },
@@ -56,10 +56,10 @@ export const chainConfigs: {
 
 // Simple mapping of chain IDs to names
 export const SUPPORTED_CHAINS = {
-  1: "Ethereum",
-  137: "Polygon",
-  42161: "Arbitrum",
-  10: "Optimism",
+  // 1: "Ethereum",
+  // 137: "Polygon",
+  // 42161: "Arbitrum",
+  // 10: "Optimism",
   8453: "Base",
 };
 

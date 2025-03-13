@@ -124,9 +124,9 @@ export default function ConnectWallet({ address, setAddress, setChainId, chainId
       // Update the UI to reflect the new network
       setChainId(chainId)
       console.log(`Switched to network: ${chainConfigs[chainId]?.name || "Unknown"} (${chainId})`)
-    } catch (switchError: any) {
+    } catch (switchError) {
       // This error code indicates that the chain has not been added to MetaMask
-      if (switchError.code === 4902) {
+      if ((switchError as { code: number }).code === 4902) {
         try {
           const network = chainConfigs[chainId]
           if (!network) {
@@ -158,13 +158,13 @@ export default function ConnectWallet({ address, setAddress, setChainId, chainId
           // Update the UI to reflect the new network
           setChainId(chainId)
           console.log(`Added and switched to network: ${network.name} (${chainId})`)
-        } catch (addError: any) {
+        } catch (addError) {
           console.error("Error adding network:", addError)
-          setNetworkSwitchError(`Failed to add network: ${addError.message || "Unknown error"}`)
+          setNetworkSwitchError(`Failed to add network: ${(addError as { message: string }).message || "Unknown error"}`)
         }
       } else {
         console.error("Error switching network:", switchError)
-        setNetworkSwitchError(`Failed to switch network: ${switchError.message || "Unknown error"}`)
+        setNetworkSwitchError(`Failed to switch network: ${(switchError as { message: string }).message || "Unknown error"}`)
       }
     } finally {
       setIsSwitchingNetwork(false)
@@ -227,7 +227,7 @@ export default function ConnectWallet({ address, setAddress, setChainId, chainId
 // Add TypeScript declaration for window.ethereum
 declare global {
   interface Window {
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     ethereum: any
   }
 }
-

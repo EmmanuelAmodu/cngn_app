@@ -1,51 +1,58 @@
-import { mainnet, polygon, arbitrum, optimism, base, type Chain } from "viem/chains"
+import {
+  mainnet,
+  polygon,
+  arbitrum,
+  optimism,
+  base,
+  type Chain,
+} from "viem/chains";
 
 // Chain configurations
 export const chainConfigs: {
   [key: number]: {
-    name: string
-    tokenAddress: string
-    contractAddress: string
-    rpcUrl: string
-    chain: Chain
-  }
+    name: string;
+    tokenAddress: string;
+    contractAddress: string;
+    rpcUrl: string;
+    chain: Chain;
+  };
 } = {
   1: {
     name: "Ethereum",
-    tokenAddress: "0x5678901234567890123456789012345678901234",
+    tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
     contractAddress: "0x1234567890123456789012345678901234567890",
     rpcUrl: "https://eth.drpc.org/",
     chain: mainnet,
   },
   137: {
     name: "Polygon",
-    tokenAddress: "0x5678901234567890123456789012345678901234",
+    tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
     contractAddress: "0x1234567890123456789012345678901234567890",
     rpcUrl: "wss://polygon.drpc.org",
     chain: polygon,
   },
   42161: {
     name: "Arbitrum",
-    tokenAddress: "0x5678901234567890123456789012345678901234",
+    tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
     contractAddress: "0x1234567890123456789012345678901234567890",
     rpcUrl: "https://arbitrum.drpc.org/",
     chain: arbitrum,
   },
   10: {
     name: "Optimism",
-    tokenAddress: "0x5678901234567890123456789012345678901234",
+    tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
     contractAddress: "0x1234567890123456789012345678901234567890",
     rpcUrl: "https://optimism.drpc.org/",
     chain: optimism,
   },
   8453: {
     name: "Base",
-    tokenAddress: "0x5678901234567890123456789012345678901234",
+    tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
     contractAddress: "0x1234567890123456789012345678901234567890",
     rpcUrl: "https://base.drpc.org/",
     chain: base,
   },
-}
+};
 
 // Simple mapping of chain IDs to names
 export const SUPPORTED_CHAINS = {
@@ -54,7 +61,7 @@ export const SUPPORTED_CHAINS = {
   42161: "Arbitrum",
   10: "Optimism",
   8453: "Base",
-}
+};
 
 // API endpoints
 export const API_ENDPOINTS = {
@@ -68,8 +75,7 @@ export const API_ENDPOINTS = {
   getSupportedBanks: "/api/banks",
   getTransactionStats: "/api/stats",
   checkWithdrawalStatus: "/api/withdrawal/status",
-}
+};
 
 // Token decimals
-export const TOKEN_DECIMALS = 18
-
+export const TOKEN_DECIMALS = 18;

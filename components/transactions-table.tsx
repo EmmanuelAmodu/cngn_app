@@ -146,7 +146,7 @@ export default function TransactionsTable({transactions, copyToClipboard}: Trans
                           <Copy className="h-4 w-4" />
                         </Button>
                       </TableCell>
-                      <TableCell className="text-right">${transaction.chain_id}</TableCell>
+                      <TableCell className="text-right">{transaction.chain_id}</TableCell>
                       <TableCell className="text-right">${transaction.amount.toFixed(2)}</TableCell>
                       <TableCell>{getStatusBadge(transaction.status)}</TableCell>
                     </TableRow>

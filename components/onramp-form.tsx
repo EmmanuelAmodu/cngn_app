@@ -12,6 +12,7 @@ import { Steps, Step } from "@/components/ui/steps"
 import { Card, CardContent } from "@/components/ui/card"
 import { generateVirtualAccountAPI, confirmDepositAPI, fetchVirtualAccountAPI } from "@/lib/api"
 import { chainConfigs } from "@/lib/constants"
+import TransactionsTable from "./transactions-table"
 
 interface OnrampFormProps {
   address: string | null
@@ -359,10 +360,14 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
         )}
 
         {success && !error && currentStep < 2 && (
-          <Alert className="bg-green-50 text-green-800 border-green-200">
-            <CheckCircle2 className="h-4 w-4" />
-            <AlertDescription>{success}</AlertDescription>
-          </Alert>
+          <div>
+            <Alert className="bg-green-50 text-green-800 border-green-200">
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
+
+            <TransactionsTable />
+          </div>
         )}
       </div>
     </div>

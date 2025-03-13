@@ -1,23 +1,31 @@
 import { chainConfigs, TOKEN_DECIMALS } from "./constants"
+import { ethers } from "ethers"
 import { DEX_ABI, ERC20_ABI } from "./abi/dex-abi"
+import { generateVirtualAccountAPI, confirmDepositAPI } from "./api"
+import { verifyBankAccountAPI, initiateOfframpAPI, initiateBridgeAPI, checkBridgeStatusAPI } from "./api"
 
 // Helper function to get ethers provider and signer
 const getProviderAndSigner = async () => {
-  if (!window.ethereum) {
-    throw new Error("MetaMask is not installed")
+  if (typeof window.ethereum === 'undefined' || !window.ethereum.isMetaMask) {
+    throw new Error('MetaMask is not installed');
   }
 
-  await window.ethereum.request({ method: "eth_requestAccounts" })
+  try {
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
+  } catch (error) {
+    throw new Error('User denied account access');
+  }
 
-  const provider = new ethers.providers.Web3Provider(window.ethereum)
-  const signer = provider.getSigner()
-  return { provider, signer }
-}
+  // In Ethers.js v6, use BrowserProvider instead of Web3Provider
+  const provider = new ethers.BrowserProvider(window.ethereum);
+  const signer = await provider.getSigner();
+  return { provider, signer };
+};
 
 // Convert cNGN amount to the correct decimals (18 decimals)
 const parseCNGNAmount = (amount: string) => {
-  return ethers.utils.parseUnits(amount, TOKEN_DECIMALS)
-}
+  return ethers.parseUnits(amount, TOKEN_DECIMALS);
+};
 
 // Add this helper function to ensure the wallet is on the correct network
 const ensureCorrectNetwork = async (chainId = 1): Promise<boolean> => {
@@ -38,9 +46,9 @@ const ensureCorrectNetwork = async (chainId = 1): Promise<boolean> => {
         params: [{ chainId: `0x${chainId.toString(16)}` }],
       })
       return true
-    } catch (switchError: any) {
+    } catch (switchError) {
       // This error code indicates that the chain has not been added to MetaMask
-      if (switchError.code === 4902) {
+      if ((switchError as { code: number }).code === 4902) {
         try {
           const network = chainConfigs[chainId]
           if (!network) {
@@ -101,9 +109,9 @@ export const approveCNGN = async (amount: string, chainId = 1): Promise<string> 
 
     await tx.wait()
     return tx.hash
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error approving cNGN:", error)
-    throw new Error(error.message || "Failed to approve cNGN")
+    throw new Error((error as {message: string}).message || "Failed to approve cNGN")
   }
 }
 
@@ -112,6 +120,10 @@ export const depositCNGN = async (amount: string, chainId = 1): Promise<string> 
   try {
     const { signer } = await getProviderAndSigner()
     const contractAddress = chainConfigs[chainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
+    if (!contractAddress) {
+      throw new Error("Contract address not found")
+    }
+
     const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer)
 
     const parsedAmount = parseCNGNAmount(amount)
@@ -119,9 +131,9 @@ export const depositCNGN = async (amount: string, chainId = 1): Promise<string> 
 
     await tx.wait()
     return tx.hash
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error depositing cNGN:", error)
-    throw new Error(error.message || "Failed to deposit cNGN")
+    throw new Error((error as {message: string}).message || "Failed to deposit cNGN")
   }
 }
 
@@ -130,6 +142,10 @@ export const withdrawUSDC = async (amount: string, chainId = 1): Promise<string>
   try {
     const { signer } = await getProviderAndSigner()
     const contractAddress = chainConfigs[chainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
+    if (!contractAddress) {
+      throw new Error("Contract address not found")
+    }
+  
     const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer)
 
     const parsedAmount = parseCNGNAmount(amount)
@@ -137,9 +153,9 @@ export const withdrawUSDC = async (amount: string, chainId = 1): Promise<string>
 
     await tx.wait()
     return tx.hash
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error withdrawing USDC:", error)
-    throw new Error(error.message || "Failed to withdraw USDC")
+    throw new Error((error as {message: string}).message || "Failed to withdraw USDC")
   }
 }
 
@@ -151,26 +167,25 @@ export const bridgeCNGN = async (amount: string, destinationChainId: number, sou
 
     const { signer } = await getProviderAndSigner()
     const contractAddress = chainConfigs[sourceChainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
+    if (!contractAddress) {
+      throw new Error("Contract address not found")
+    }
+  
     const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer)
 
     // Generate a unique bridge ID
-    const bridgeId = ethers.utils.randomBytes(32)
+    const bridgeId = ethers.randomBytes(32)
 
     const parsedAmount = parseCNGNAmount(amount)
     const tx = await dexContract.bridgeFrom(parsedAmount, destinationChainId, bridgeId)
 
     await tx.wait()
     return tx.hash
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error bridging cNGN:", error)
-    throw new Error(error.message || "Failed to bridge cNGN")
+    throw new Error((error as {message: string}).message || "Failed to bridge cNGN")
   }
 }
-
-// Update the generateVirtualAccount function to use the API instead
-import { generateVirtualAccountAPI, confirmDepositAPI } from "./api"
-
-import { verifyBankAccountAPI, initiateOfframpAPI, initiateBridgeAPI, checkBridgeStatusAPI } from "./api"
 
 // Generate virtual account for fiat deposit
 export const generateVirtualAccount = async (
@@ -200,45 +215,22 @@ export const generateVirtualAccount = async (
       bankName: response.data.bankName,
       accountName: response.data.accountName,
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error generating virtual account:", error)
-    throw new Error(error.message || "Failed to generate virtual account. Please try again.")
+    throw new Error((error as {message: string}).message || "Failed to generate virtual account. Please try again.")
   }
 }
 
-// Update the confirmDeposit function to use the API
-export const confirmDeposit = async (amount: string): Promise<void> => {
-  try {
-    const reference = localStorage.getItem("virtualAccountRef")
-    if (!reference) {
-      throw new Error("Virtual account reference not found")
-    }
-
-    const expiryDate = localStorage.getItem("virtualAccountExpiry")
-    if (expiryDate && new Date(expiryDate) < new Date()) {
-      throw new Error("Virtual account has expired. Please generate a new one.")
-    }
-
-    const response = await confirmDepositAPI(reference, amount)
-
-    if (!response.status) {
-      throw new Error(response.message)
-    }
-
-    // Clear the stored reference and expiry after successful confirmation
-    localStorage.removeItem("virtualAccountRef")
-    localStorage.removeItem("virtualAccountExpiry")
-  } catch (error: any) {
-    console.error("Error confirming deposit:", error)
-    throw new Error(error.message || "Failed to confirm deposit")
-  }
-}
 
 // Mint tokens after confirmed deposit
 export const mintTokens = async (amount: string, chainId = 1): Promise<string> => {
   try {
     const { signer } = await getProviderAndSigner()
     const contractAddress = chainConfigs[chainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
+    if (!contractAddress) {
+      throw new Error("Contract address not found")
+    }
+
     const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer)
 
     // Call your contract's function to mint tokens
@@ -409,7 +401,3 @@ export const checkBridgeStatus = async (
     throw new Error(error.message || "Failed to check bridge status. Please try again.")
   }
 }
-
-// Declare ethers to avoid TypeScript errors
-declare const ethers: any
-

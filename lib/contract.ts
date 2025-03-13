@@ -1,22 +1,19 @@
-import { chainConfigs, TOKEN_DECIMALS } from "./constants"
-import { ethers } from "ethers"
-import { DEX_ABI, ERC20_ABI } from "./abi/dex-abi"
-import { generateVirtualAccountAPI, confirmDepositAPI } from "./api"
-import { verifyBankAccountAPI, initiateOfframpAPI, initiateBridgeAPI, checkBridgeStatusAPI } from "./api"
+import { chainConfigs, TOKEN_DECIMALS } from "./constants";
+import { ethers } from "ethers";
+import { DEX_ABI, ERC20_ABI } from "./abi/dex-abi";
 
 // Helper function to get ethers provider and signer
 const getProviderAndSigner = async () => {
-  if (typeof window.ethereum === 'undefined' || !window.ethereum.isMetaMask) {
-    throw new Error('MetaMask is not installed');
+  if (typeof window.ethereum === "undefined" || !window.ethereum.isMetaMask) {
+    throw new Error("MetaMask is not installed");
   }
 
   try {
-    await window.ethereum.request({ method: 'eth_requestAccounts' });
+    await window.ethereum.request({ method: "eth_requestAccounts" });
   } catch (error) {
-    throw new Error('User denied account access');
+    throw new Error("User denied account access");
   }
 
-  // In Ethers.js v6, use BrowserProvider instead of Web3Provider
   const provider = new ethers.BrowserProvider(window.ethereum);
   const signer = await provider.getSigner();
   return { provider, signer };
@@ -30,13 +27,13 @@ const parseCNGNAmount = (amount: string) => {
 // Add this helper function to ensure the wallet is on the correct network
 const ensureCorrectNetwork = async (chainId = 1): Promise<boolean> => {
   if (!window.ethereum) {
-    throw new Error("MetaMask is not installed")
+    throw new Error("MetaMask is not installed");
   }
 
   const chainIdHex = await window.ethereum.request({
     method: "eth_chainId",
-  })
-  const currentChainId = Number.parseInt(chainIdHex, 16)
+  });
+  const currentChainId = Number.parseInt(chainIdHex, 16);
 
   if (currentChainId !== chainId) {
     // Prompt the user to switch networks
@@ -44,15 +41,17 @@ const ensureCorrectNetwork = async (chainId = 1): Promise<boolean> => {
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
         params: [{ chainId: `0x${chainId.toString(16)}` }],
-      })
-      return true
+      });
+      return true;
     } catch (switchError) {
       // This error code indicates that the chain has not been added to MetaMask
       if ((switchError as { code: number }).code === 4902) {
         try {
-          const network = chainConfigs[chainId]
+          const network = chainConfigs[chainId];
           if (!network) {
-            throw new Error(`Network configuration not found for chain ID ${chainId}`)
+            throw new Error(
+              `Network configuration not found for chain ID ${chainId}`
+            );
           }
 
           await window.ethereum.request({
@@ -69,335 +68,243 @@ const ensureCorrectNetwork = async (chainId = 1): Promise<boolean> => {
                 },
               },
             ],
-          })
+          });
 
           // After adding the network, try to switch to it again
           await window.ethereum.request({
             method: "wallet_switchEthereumChain",
             params: [{ chainId: `0x${chainId.toString(16)}` }],
-          })
+          });
 
-          return true
+          return true;
         } catch (addError) {
-          console.error("Error adding network:", addError)
-          throw new Error(`Failed to add network: ${addError instanceof Error ? addError.message : "Unknown error"}`)
+          console.error("Error adding network:", addError);
+          throw new Error(
+            `Failed to add network: ${
+              addError instanceof Error ? addError.message : "Unknown error"
+            }`
+          );
         }
       } else {
         throw new Error(
-          `Please switch your wallet to ${chainConfigs[chainId]?.name || "the correct"} network to continue`,
-        )
+          `Please switch your wallet to ${
+            chainConfigs[chainId]?.name || "the correct"
+          } network to continue`
+        );
       }
     }
   }
 
-  return true
-}
+  return true;
+};
 
 // Approve cNGN to be spent by the DEX contract
-export const approveCNGN = async (amount: string, chainId = 1): Promise<string> => {
+export const approveCNGN = async (
+  amount: string,
+  chainId = 1
+): Promise<string> => {
   try {
     // Ensure wallet is on the correct network
-    await ensureCorrectNetwork(chainId)
+    await ensureCorrectNetwork(chainId);
 
-    const { signer } = await getProviderAndSigner()
-    const tokenAddress = chainConfigs[chainId]?.tokenAddress
-    const cngnContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer)
+    const { signer } = await getProviderAndSigner();
+    const tokenAddress = chainConfigs[chainId]?.tokenAddress;
+    const cngnContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
 
-    const contractAddress = chainConfigs[chainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
-    const parsedAmount = parseCNGNAmount(amount)
-    const tx = await cngnContract.approve(contractAddress, parsedAmount)
+    const contractAddress =
+      chainConfigs[chainId]?.contractAddress ||
+      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+    const parsedAmount = parseCNGNAmount(amount);
+    const tx = await cngnContract.approve(contractAddress, parsedAmount);
 
-    await tx.wait()
-    return tx.hash
+    await tx.wait();
+    return tx.hash;
   } catch (error) {
-    console.error("Error approving cNGN:", error)
-    throw new Error((error as {message: string}).message || "Failed to approve cNGN")
+    console.error("Error approving cNGN:", error);
+    throw new Error(
+      (error as { message: string }).message || "Failed to approve cNGN"
+    );
   }
-}
+};
 
 // Deposit cNGN to the DEX contract
-export const depositCNGN = async (amount: string, chainId = 1): Promise<string> => {
+export const depositCNGN = async (
+  amount: string,
+  chainId = 1
+): Promise<string> => {
   try {
-    const { signer } = await getProviderAndSigner()
-    const contractAddress = chainConfigs[chainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
+    const { signer } = await getProviderAndSigner();
+    const contractAddress =
+      chainConfigs[chainId]?.contractAddress ||
+      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
     if (!contractAddress) {
-      throw new Error("Contract address not found")
+      throw new Error("Contract address not found");
     }
 
-    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer)
+    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer);
 
-    const parsedAmount = parseCNGNAmount(amount)
-    const tx = await dexContract.deposit(parsedAmount)
+    const parsedAmount = parseCNGNAmount(amount);
+    const tx = await dexContract.deposit(parsedAmount);
 
-    await tx.wait()
-    return tx.hash
+    await tx.wait();
+    return tx.hash;
   } catch (error) {
-    console.error("Error depositing cNGN:", error)
-    throw new Error((error as {message: string}).message || "Failed to deposit cNGN")
+    console.error("Error depositing cNGN:", error);
+    throw new Error(
+      (error as { message: string }).message || "Failed to deposit cNGN"
+    );
   }
-}
+};
 
 // Withdraw USDC from the DEX contract
-export const withdrawUSDC = async (amount: string, chainId = 1): Promise<string> => {
+export const withdrawUSDC = async (
+  amount: string,
+  chainId = 1
+): Promise<string> => {
   try {
-    const { signer } = await getProviderAndSigner()
-    const contractAddress = chainConfigs[chainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
+    const { signer } = await getProviderAndSigner();
+    const contractAddress =
+      chainConfigs[chainId]?.contractAddress ||
+      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
     if (!contractAddress) {
-      throw new Error("Contract address not found")
+      throw new Error("Contract address not found");
     }
-  
-    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer)
 
-    const parsedAmount = parseCNGNAmount(amount)
-    const tx = await dexContract.withdraw(parsedAmount)
+    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer);
 
-    await tx.wait()
-    return tx.hash
+    const parsedAmount = parseCNGNAmount(amount);
+    const tx = await dexContract.withdraw(parsedAmount);
+
+    await tx.wait();
+    return tx.hash;
   } catch (error) {
-    console.error("Error withdrawing USDC:", error)
-    throw new Error((error as {message: string}).message || "Failed to withdraw USDC")
+    console.error("Error withdrawing USDC:", error);
+    throw new Error(
+      (error as { message: string }).message || "Failed to withdraw USDC"
+    );
   }
-}
+};
 
 // Bridge cNGN to another chain
-export const bridgeCNGN = async (amount: string, destinationChainId: number, sourceChainId = 1): Promise<string> => {
+export const bridgeCNGN = async (
+  amount: string,
+  destinationChainId: number,
+  sourceChainId = 1
+): Promise<string> => {
   try {
     // Ensure wallet is on the correct network
-    await ensureCorrectNetwork(sourceChainId)
+    await ensureCorrectNetwork(sourceChainId);
 
-    const { signer } = await getProviderAndSigner()
-    const contractAddress = chainConfigs[sourceChainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
+    const { signer } = await getProviderAndSigner();
+    const contractAddress =
+      chainConfigs[sourceChainId]?.contractAddress ||
+      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
     if (!contractAddress) {
-      throw new Error("Contract address not found")
+      throw new Error("Contract address not found");
     }
-  
-    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer)
+
+    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer);
 
     // Generate a unique bridge ID
-    const bridgeId = ethers.randomBytes(32)
+    const bridgeId = ethers.randomBytes(32);
 
-    const parsedAmount = parseCNGNAmount(amount)
-    const tx = await dexContract.bridgeFrom(parsedAmount, destinationChainId, bridgeId)
+    const parsedAmount = parseCNGNAmount(amount);
+    const tx = await dexContract.bridgeFrom(
+      parsedAmount,
+      destinationChainId,
+      bridgeId
+    );
 
-    await tx.wait()
-    return tx.hash
+    await tx.wait();
+    return tx.hash;
   } catch (error) {
-    console.error("Error bridging cNGN:", error)
-    throw new Error((error as {message: string}).message || "Failed to bridge cNGN")
+    console.error("Error bridging cNGN:", error);
+    throw new Error(
+      (error as { message: string }).message || "Failed to bridge cNGN"
+    );
   }
-}
-
-// Generate virtual account for fiat deposit
-export const generateVirtualAccount = async (
-  amount: string,
-): Promise<{
-  accountNumber: string
-  bankName: string
-  accountName: string
-}> => {
-  if (!window.ethereum?.selectedAddress) {
-    throw new Error("No wallet address found")
-  }
-
-  try {
-    const response = await generateVirtualAccountAPI(amount)
-
-    if (!response.status) {
-      throw new Error(response.message)
-    }
-
-    // Store the reference and expiry in localStorage for later use
-    localStorage.setItem("virtualAccountRef", response.data.reference)
-    localStorage.setItem("virtualAccountExpiry", response.data.expiresAt)
-
-    return {
-      accountNumber: response.data.accountNumber,
-      bankName: response.data.bankName,
-      accountName: response.data.accountName,
-    }
-  } catch (error) {
-    console.error("Error generating virtual account:", error)
-    throw new Error((error as {message: string}).message || "Failed to generate virtual account. Please try again.")
-  }
-}
-
+};
 
 // Mint tokens after confirmed deposit
-export const mintTokens = async (amount: string, chainId = 1): Promise<string> => {
+export const mintTokens = async (
+  amount: string,
+  chainId = 1
+): Promise<string> => {
   try {
-    const { signer } = await getProviderAndSigner()
-    const contractAddress = chainConfigs[chainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
+    const { signer } = await getProviderAndSigner();
+    const contractAddress =
+      chainConfigs[chainId]?.contractAddress ||
+      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
     if (!contractAddress) {
-      throw new Error("Contract address not found")
+      throw new Error("Contract address not found");
     }
 
-    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer)
+    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer);
 
     // Call your contract's function to mint tokens
-    const tx = await dexContract.mintTokens(amount)
-    await tx.wait()
+    const tx = await dexContract.mintTokens(amount);
+    await tx.wait();
 
-    return tx.hash
-  } catch (error: any) {
-    console.error("Error minting tokens:", error)
-    throw new Error(error.message || "Failed to mint tokens")
+    return tx.hash;
+  } catch (error) {
+    console.error("Error minting tokens:", error);
+    throw new Error((error as { message: string }).message || "Failed to mint tokens");
   }
-}
+};
 
 // Approve tokens to be spent by the contract
-export const approveTokens = async (amount: string, chainId = 1): Promise<string> => {
+export const approveTokens = async (
+  amount: string,
+  chainId = 1
+): Promise<string> => {
   try {
-    const { signer } = await getProviderAndSigner()
-    const tokenAddress = chainConfigs[chainId]?.tokenAddress
-    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer)
+    const { signer } = await getProviderAndSigner();
+    const tokenAddress = chainConfigs[chainId]?.tokenAddress;
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
 
-    const contractAddress = chainConfigs[chainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
-    const parsedAmount = parseCNGNAmount(amount)
-    const tx = await tokenContract.approve(contractAddress, parsedAmount)
-    await tx.wait()
+    const contractAddress =
+      chainConfigs[chainId]?.contractAddress ||
+      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+    const parsedAmount = parseCNGNAmount(amount);
+    const tx = await tokenContract.approve(contractAddress, parsedAmount);
+    await tx.wait();
 
-    return tx.hash
-  } catch (error: any) {
-    console.error("Error approving tokens:", error)
-    throw new Error(error.message || "Failed to approve tokens")
+    return tx.hash;
+  } catch (error) {
+    console.error("Error approving tokens:", error);
+    throw new Error((error as { message: string }).message || "Failed to approve tokens");
   }
-}
+};
 
 // Burn tokens and initiate fiat transfer
 export const burnTokens = async (
   amount: string,
-  bankDetails: {
-    accountNumber: string
-    accountName: string
-    bankName: string
-  },
-  chainId = 1,
+  chainId = 1
 ): Promise<string> => {
   try {
     // Ensure wallet is on the correct network
-    await ensureCorrectNetwork(chainId)
+    await ensureCorrectNetwork(chainId);
 
-    const { signer } = await getProviderAndSigner()
-    const contractAddress = chainConfigs[chainId]?.contractAddress || process.env.NEXT_PUBLIC_CONTRACT_ADDRESS
-    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer)
+    const { signer } = await getProviderAndSigner();
+    const contractAddress =
+      chainConfigs[chainId]?.contractAddress ||
+      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+    if (!contractAddress) {
+      throw new Error("Contract address not found");
+    }
+  
+    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer);
 
     // Generate a unique offramp ID
-    const offRampId = ethers.utils.randomBytes(32)
+    const offRampId = ethers.randomBytes(32);
 
     // Call your contract's function to burn tokens and initiate fiat transfer
-    const tx = await dexContract.withdraw(parseCNGNAmount(amount), offRampId)
+    const tx = await dexContract.withdraw(parseCNGNAmount(amount), offRampId);
 
-    await tx.wait()
-    return tx.hash
-  } catch (error: any) {
-    console.error("Error burning tokens:", error)
-    throw new Error(error.message || "Failed to burn tokens")
+    await tx.wait();
+    return tx.hash;
+  } catch (error) {
+    console.error("Error burning tokens:", error);
+    throw new Error((error as { message: string }).message || "Failed to burn tokens");
   }
-}
-
-// Verify bank account before offramp
-export const verifyBankAccount = async (
-  accountNumber: string,
-  bankCode: string,
-): Promise<{
-  accountName: string
-  isValid: boolean
-}> => {
-  try {
-    const response = await verifyBankAccountAPI(accountNumber, bankCode)
-
-    if (!response.status) {
-      throw new Error(response.message)
-    }
-
-    return {
-      accountName: response.data.accountName,
-      isValid: response.data.isValid,
-    }
-  } catch (error: any) {
-    console.error("Error verifying bank account:", error)
-    throw new Error(error.message || "Failed to verify bank account. Please try again.")
-  }
-}
-
-// Initiate offramp process
-export const initiateOfframp = async (
-  amount: string,
-  bankDetails: {
-    accountNumber: string
-    accountName: string
-    bankName: string
-    bankCode: string
-  },
-  chainId = 1,
-): Promise<{
-  reference: string
-  estimatedTime: string
-}> => {
-  try {
-    const response = await initiateOfframpAPI(amount, bankDetails, chainId)
-
-    if (!response.status) {
-      throw new Error(response.message)
-    }
-
-    return {
-      reference: response.data.reference,
-      estimatedTime: response.data.estimatedTime,
-    }
-  } catch (error: any) {
-    console.error("Error initiating offramp:", error)
-    throw new Error(error.message || "Failed to initiate offramp. Please try again.")
-  }
-}
-
-// Initiate bridge process
-export const initiateBridge = async (
-  amount: string,
-  sourceChain: string,
-  destinationChain: string,
-  sourceChainId = 1,
-): Promise<{
-  reference: string
-  estimatedTime: string
-}> => {
-  try {
-    const response = await initiateBridgeAPI(amount, sourceChain, destinationChain, sourceChainId)
-
-    if (!response.status) {
-      throw new Error(response.message)
-    }
-
-    return {
-      reference: response.data.reference,
-      estimatedTime: response.data.estimatedTime,
-    }
-  } catch (error: any) {
-    console.error("Error initiating bridge:", error)
-    throw new Error(error.message || "Failed to initiate bridge. Please try again.")
-  }
-}
-
-// Check bridge status
-export const checkBridgeStatus = async (
-  reference: string,
-): Promise<{
-  status: "pending" | "processing" | "completed" | "failed"
-  estimatedTime: string
-}> => {
-  try {
-    const response = await checkBridgeStatusAPI(reference)
-
-    if (!response.status) {
-      throw new Error(response.message)
-    }
-
-    return {
-      status: response.data.bridgeStatus,
-      estimatedTime: response.data.estimatedTime,
-    }
-  } catch (error: any) {
-    console.error("Error checking bridge status:", error)
-    throw new Error(error.message || "Failed to check bridge status. Please try again.")
-  }
-}
+};

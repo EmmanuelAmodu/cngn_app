@@ -169,6 +169,7 @@ export const confirmDepositAPI = async (
 ): Promise<{
   status: boolean
   message: string
+  data: []
 }> => {
   try {
     if (!window.ethereum?.selectedAddress) {
@@ -202,6 +203,7 @@ export const confirmDepositAPI = async (
     return {
       status: true,
       message: "Payment confirmed successfully",
+      data,
     }
   } catch (error) {
     console.error("Error confirming deposit:", error)

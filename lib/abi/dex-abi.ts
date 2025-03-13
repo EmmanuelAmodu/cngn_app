@@ -2,14 +2,38 @@ export const DEX_ABI = [
   {
     type: "constructor",
     inputs: [
-      { name: "tokenAddress", type: "address", internalType: "address" },
       { name: "initialOwner", type: "address", internalType: "address" },
+      { name: "tokenAddress", type: "address", internalType: "address" },
     ],
     stateMutability: "nonpayable",
   },
   {
     type: "function",
-    name: "bridgeFrom",
+    name: "adminBulkProcessor",
+    inputs: [
+      {
+        name: "adminActions",
+        type: "tuple[]",
+        internalType: "struct CNGNService.AdminAction[]",
+        components: [
+          { name: "to", type: "address", internalType: "address" },
+          { name: "amount", type: "uint256", internalType: "uint256" },
+          { name: "sourceChainId", type: "uint8", internalType: "uint8" },
+          { name: "id", type: "bytes32", internalType: "bytes32" },
+          {
+            name: "actionType",
+            type: "uint8",
+            internalType: "enum CNGNService.AdminActionType",
+          },
+        ],
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "bridgeEntry",
     inputs: [
       { name: "amount", type: "uint256", internalType: "uint256" },
       { name: "destinationChainId", type: "uint8", internalType: "uint8" },
@@ -20,7 +44,14 @@ export const DEX_ABI = [
   },
   {
     type: "function",
-    name: "bridgeTo",
+    name: "bridgeEntryIds",
+    inputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "bridgeExit",
     inputs: [
       { name: "to", type: "address", internalType: "address" },
       { name: "amount", type: "uint256", internalType: "uint256" },
@@ -32,7 +63,54 @@ export const DEX_ABI = [
   },
   {
     type: "function",
-    name: "deposit",
+    name: "bridgeExitIds",
+    inputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "bulkProcessor",
+    inputs: [
+      {
+        name: "actions",
+        type: "tuple[]",
+        internalType: "struct CNGNService.Action[]",
+        components: [
+          { name: "amount", type: "uint256", internalType: "uint256" },
+          { name: "destinationChainId", type: "uint8", internalType: "uint8" },
+          { name: "id", type: "bytes32", internalType: "bytes32" },
+          {
+            name: "actionType",
+            type: "uint8",
+            internalType: "enum CNGNService.ActionType",
+          },
+        ],
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "offRamp",
+    inputs: [
+      { name: "amount", type: "uint256", internalType: "uint256" },
+      { name: "offRampId", type: "bytes32", internalType: "bytes32" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "offRampIds",
+    inputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "onRamp",
     inputs: [
       { name: "to", type: "address", internalType: "address" },
       { name: "amount", type: "uint256", internalType: "uint256" },
@@ -40,6 +118,13 @@ export const DEX_ABI = [
     ],
     outputs: [],
     stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "onRampIds",
+    inputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    stateMutability: "view",
   },
   {
     type: "function",
@@ -72,7 +157,9 @@ export const DEX_ABI = [
   {
     type: "function",
     name: "setTokenAddress",
-    inputs: [{ name: "tokenAddress", type: "address", internalType: "address" }],
+    inputs: [
+      { name: "tokenAddress", type: "address", internalType: "address" },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
   },
@@ -98,44 +185,94 @@ export const DEX_ABI = [
     stateMutability: "nonpayable",
   },
   {
-    type: "function",
-    name: "withdraw",
-    inputs: [
-      { name: "amount", type: "uint256", internalType: "uint256" },
-      { name: "offRampId", type: "bytes32", internalType: "bytes32" },
-    ],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
     type: "event",
-    name: "BridgeFrom",
+    name: "BridgeEntry",
     inputs: [
       { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "destinationChainId", type: "uint8", indexed: false, internalType: "uint8" },
-      { name: "bridgeId", type: "bytes32", indexed: false, internalType: "bytes32" },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "destinationChainId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
+      },
+      {
+        name: "bridgeId",
+        type: "bytes32",
+        indexed: false,
+        internalType: "bytes32",
+      },
     ],
     anonymous: false,
   },
   {
     type: "event",
-    name: "BridgeTo",
+    name: "BridgeExit",
     inputs: [
       { name: "to", type: "address", indexed: true, internalType: "address" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "sourceChainId", type: "uint8", indexed: false, internalType: "uint8" },
-      { name: "bridgeId", type: "bytes32", indexed: false, internalType: "bytes32" },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "sourceChainId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
+      },
+      {
+        name: "bridgeId",
+        type: "bytes32",
+        indexed: false,
+        internalType: "bytes32",
+      },
     ],
     anonymous: false,
   },
   {
     type: "event",
-    name: "Deposit",
+    name: "OffRamp",
+    inputs: [
+      { name: "user", type: "address", indexed: true, internalType: "address" },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "offRampId",
+        type: "bytes32",
+        indexed: false,
+        internalType: "bytes32",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "OnRamp",
     inputs: [
       { name: "to", type: "address", indexed: true, internalType: "address" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "onrampId", type: "bytes32", indexed: false, internalType: "bytes32" },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "onrampId",
+        type: "bytes32",
+        indexed: false,
+        internalType: "bytes32",
+      },
     ],
     anonymous: false,
   },
@@ -143,30 +280,44 @@ export const DEX_ABI = [
     type: "event",
     name: "OwnershipTransferred",
     inputs: [
-      { name: "previousOwner", type: "address", indexed: true, internalType: "address" },
-      { name: "newOwner", type: "address", indexed: true, internalType: "address" },
+      {
+        name: "previousOwner",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "newOwner",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
     ],
     anonymous: false,
   },
   {
     type: "event",
     name: "Paused",
-    inputs: [{ name: "account", type: "address", indexed: false, internalType: "address" }],
+    inputs: [
+      {
+        name: "account",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
+    ],
     anonymous: false,
   },
   {
     type: "event",
     name: "Unpaused",
-    inputs: [{ name: "account", type: "address", indexed: false, internalType: "address" }],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "Withdrawal",
     inputs: [
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "offRampId", type: "bytes32", indexed: false, internalType: "bytes32" },
+      {
+        name: "account",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
     ],
     anonymous: false,
   },
@@ -188,29 +339,4 @@ export const DEX_ABI = [
     name: "SafeERC20FailedOperation",
     inputs: [{ name: "token", type: "address", internalType: "address" }],
   },
-] as const
-
-export const ERC20_ABI = [
-  {
-    constant: false,
-    inputs: [
-      { name: "_spender", type: "address" },
-      { name: "_value", type: "uint256" },
-    ],
-    name: "approve",
-    outputs: [{ name: "", type: "bool" }],
-    payable: false,
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    constant: true,
-    inputs: [{ name: "_owner", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "balance", type: "uint256" }],
-    payable: false,
-    stateMutability: "view",
-    type: "function",
-  },
-] as const
-
+] as const;

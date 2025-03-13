@@ -163,7 +163,7 @@ async function commitOnChain(
       address: getContractAddress(Number(chainId) || 1),
       abi: contractABI,
       account: walletClient.account,
-      functionName: "deposit",
+      functionName: "onRamp",
       args: [userAddress as Address, amountInWei, onrampId],
       chain,
     });

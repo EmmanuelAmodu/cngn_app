@@ -1,6 +1,7 @@
 import { chainConfigs, TOKEN_DECIMALS } from "./constants";
 import { ethers } from "ethers";
-import { DEX_ABI, ERC20_ABI } from "./abi/dex-abi";
+import { DEX_ABI } from "./abi/dex-abi";
+import { erc20Abi } from "viem";
 
 // Helper function to get ethers provider and signer
 const getProviderAndSigner = async () => {
@@ -109,7 +110,7 @@ export const approveCNGN = async (
 
     const { signer } = await getProviderAndSigner();
     const tokenAddress = chainConfigs[chainId]?.tokenAddress;
-    const cngnContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+    const cngnContract = new ethers.Contract(tokenAddress, erc20Abi, signer);
 
     const contractAddress =
       chainConfigs[chainId]?.contractAddress ||
@@ -123,35 +124,6 @@ export const approveCNGN = async (
     console.error("Error approving cNGN:", error);
     throw new Error(
       (error as { message: string }).message || "Failed to approve cNGN"
-    );
-  }
-};
-
-// Deposit cNGN to the DEX contract
-export const depositCNGN = async (
-  amount: string,
-  chainId = 1
-): Promise<string> => {
-  try {
-    const { signer } = await getProviderAndSigner();
-    const contractAddress =
-      chainConfigs[chainId]?.contractAddress ||
-      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-    if (!contractAddress) {
-      throw new Error("Contract address not found");
-    }
-
-    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer);
-
-    const parsedAmount = parseCNGNAmount(amount);
-    const tx = await dexContract.deposit(parsedAmount);
-
-    await tx.wait();
-    return tx.hash;
-  } catch (error) {
-    console.error("Error depositing cNGN:", error);
-    throw new Error(
-      (error as { message: string }).message || "Failed to deposit cNGN"
     );
   }
 };
@@ -260,7 +232,7 @@ export const approveTokens = async (
   try {
     const { signer } = await getProviderAndSigner();
     const tokenAddress = chainConfigs[chainId]?.tokenAddress;
-    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+    const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, signer);
 
     const contractAddress =
       chainConfigs[chainId]?.contractAddress ||

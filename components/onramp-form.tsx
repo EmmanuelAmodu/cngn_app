@@ -33,59 +33,6 @@ interface UserDetails {
   mobileNumber: string
 }
 
-// Sample transaction data
-// const transactions: TransactionTableProps[] = [
-//   {
-//     id: "TX123456",
-//     date: "2023-04-15",
-//     description: "Online Purchase",
-//     amount: 125.99,
-//     status: "successful",
-//   },
-//   {
-//     id: "TX123457",
-//     date: "2023-04-14",
-//     description: "Subscription Payment",
-//     amount: 9.99,
-//     status: "successful",
-//   },
-//   {
-//     id: "TX123458",
-//     date: "2023-04-14",
-//     description: "Fund Transfer",
-//     amount: 500.0,
-//     status: "pending",
-//   },
-//   {
-//     id: "TX123459",
-//     date: "2023-04-13",
-//     description: "Withdrawal",
-//     amount: 200.0,
-//     status: "processing",
-//   },
-//   {
-//     id: "TX123460",
-//     date: "2023-04-12",
-//     description: "Deposit",
-//     amount: 1000.0,
-//     status: "successful",
-//   },
-//   {
-//     id: "TX123461",
-//     date: "2023-04-11",
-//     description: "Bill Payment",
-//     amount: 85.75,
-//     status: "pending",
-//   },
-//   {
-//     id: "TX123462",
-//     date: "2023-04-10",
-//     description: "Refund",
-//     amount: 49.99,
-//     status: "processing",
-//   },
-// ]
-
 export default function OnrampForm({ address, chainId }: OnrampFormProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
@@ -261,7 +208,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 
     try {
       const response = await confirmDepositAPI(virtualAccount.reference, chainId || 1)
-      console.log("Confirm deposit response:", response)
+      console.log("Confirm deposit response:", response.data)
       setOnRampTransactions(response.data)
       setCurrentStep(2)
       setSuccess("Deposit confirmed! Your tokens will be minted shortly.")

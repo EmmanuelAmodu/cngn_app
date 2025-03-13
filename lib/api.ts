@@ -199,12 +199,7 @@ export const confirmDepositAPI = async (
       }
     }
 
-    const data = await response.json()
-    return {
-      status: true,
-      message: "Payment confirmed successfully",
-      data,
-    }
+    return response.json()
   } catch (error) {
     console.error("Error confirming deposit:", error)
     throw new Error((error as { message: string }).message || "Failed to confirm deposit")

@@ -10,12 +10,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 
 export interface TransactionTableProps {
-  id: string
-  date: string
-  description: string
-  amount: number
-  status: string
-}
+  amount: number;
+  chain_id: number;
+  created_at: string; // ISO timestamp
+  on_chain_tx: string | null;
+  onramp_id: string;
+  payment_reference: string;
+  status: 'pending' | 'completed' | 'failed'; // assuming these are possible statuses
+  updated_at: string; // ISO timestamp
+  user_address: string;
+};
 
 export default function TransactionsTable(transactions: TransactionTableProps[]) {
   const [activeFilter, setActiveFilter] = useState("all")
@@ -120,10 +124,10 @@ export default function TransactionsTable(transactions: TransactionTableProps[])
               <TableBody>
                 {filteredTransactions.length > 0 ? (
                   filteredTransactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell className="font-medium">{transaction.id}</TableCell>
-                      <TableCell>{transaction.date}</TableCell>
-                      <TableCell>{transaction.description}</TableCell>
+                    <TableRow key={transaction.onramp_id}>
+                      <TableCell className="font-medium">{transaction.onramp_id}</TableCell>
+                      <TableCell>{transaction.created_at}</TableCell>
+                      <TableCell>{transaction.on_chain_tx}</TableCell>
                       <TableCell className="text-right">${transaction.amount.toFixed(2)}</TableCell>
                       <TableCell>{getStatusBadge(transaction.status)}</TableCell>
                     </TableRow>

@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       {
         error: `Missing required fields: ${[
           !userAddress && "userAddress",
-          !chainId && "onrampId",
+          !chainId && "chainId",
         ]
           .filter(Boolean)
           .join(", ")}`,
@@ -77,7 +77,6 @@ export async function POST(request: Request) {
     .from("onramps")
     .select("*")
     .eq("user_address", userAddress)
-    .eq("status", "pending");
 
   if (fetchError) {
     console.error("Error fetching deposits:", fetchError);

@@ -355,7 +355,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
               </AlertDescription>
             </Alert>
 
-            <TransactionsTable transactions={onRampTransactions} />
+            <TransactionsTable transactions={onRampTransactions} copyToClipboard={copyToClipboard} />
           </div>
         )}
 

@@ -61,6 +61,7 @@ export async function POST(request: Request) {
     .from("virtual_accounts")
     .select("*")
     .eq("user_address", userAddress)
+    .eq("chain_id", chainId)
     .single();
 
   if (accountDataError) {

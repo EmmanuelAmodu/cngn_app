@@ -4,13 +4,6 @@ import { mainnet } from "viem/chains"
 import { chainConfigs } from "./constants"
 import { DEX_ABI } from "./abi/dex-abi"
 
-// Configuration
-if (!process.env.NEXT_PUBLIC_RPC_URL) {
-  throw new Error("NEXT_PUBLIC_RPC_URL is not defined")
-}
-
-export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL
-
 export const getContractAddress = (chainId = 1): Address => {
   return (
     (chainConfigs[chainId]?.contractAddress as Address) ||
@@ -29,16 +22,10 @@ export const getChain = (chainId = 1): Chain => {
   return chainConfigs[chainId]?.chain || mainnet
 }
 
-// Initialize clients
-export const publicClient = createPublicClient({
-  chain: mainnet,
-  transport: http(RPC_URL),
-})
-
 // Create a public client for a specific chain
 export const getPublicClient = (chainId = 1) => {
   const chain = getChain(chainId)
-  const rpcUrl = chainConfigs[chainId]?.rpcUrl || RPC_URL
+  const rpcUrl = chainConfigs[chainId].rpcUrl
 
   return createPublicClient({
     chain,
@@ -49,11 +36,12 @@ export const getPublicClient = (chainId = 1) => {
 let walletClient: WalletClient | null = null
 
 export function initializeWalletClient(privateKey: string, chainId = 1) {
+  console.log("Chain ID", chainId)
   try {
     console.log("Initializing wallet client...")
     const account = privateKeyToAccount(privateKey as `0x${string}`)
     const chain = getChain(chainId)
-    const rpcUrl = chainConfigs[chainId]?.rpcUrl || RPC_URL
+    const rpcUrl = chainConfigs[chainId].rpcUrl
 
     walletClient = createWalletClient({
       account,

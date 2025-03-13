@@ -182,8 +182,6 @@ export async function getCustomerTransactions(customerId: number) {
     }
 
     const responseData: PaystackTransactionResponse = await response.json();
-    console.log("Customer transactions fetching response:", responseData);
-
     return responseData.data;
   } catch (error) {
     console.error("Error fetching customer transactions:", error);

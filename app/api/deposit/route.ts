@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import {
-  publicClient,
   getWalletClient,
   getContractAddress,
   contractABI,
@@ -171,10 +170,7 @@ async function commitOnChain(
     console.log("Transaction submitted:", txHash);
 
     // Get the public client for the specified chain
-    const client =
-      publicClient.chain.id === Number(chainId)
-        ? publicClient
-        : getPublicClient(Number(chainId));
+    const client = getPublicClient(Number(chainId));
 
     const receipt = await client.waitForTransactionReceipt({ hash: txHash });
     console.log("Transaction confirmed:", receipt);

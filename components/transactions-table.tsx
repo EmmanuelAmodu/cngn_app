@@ -131,14 +131,16 @@ export default function TransactionsTable({transactions, copyToClipboard}: Trans
                   filteredTransactions.map((transaction) => (
                     <TableRow key={transaction.onramp_id}>
                       <TableCell className="font-medium">
-                        {`${transaction.onramp_id.slice(0, 5)}...`}
+                        {`${transaction.onramp_id.slice(0, 5)}...${transaction.onramp_id.slice(transaction.onramp_id.length - 5)}`}
                         <Button variant="ghost" size="sm" onClick={() => copyToClipboard(transaction.onramp_id)}>
                           <Copy className="h-4 w-4" />
                         </Button>
                       </TableCell>
-                      <TableCell>{transaction.created_at}</TableCell>
+                      <TableCell>{transaction.created_at.split("T")[0]}</TableCell>
                       <TableCell>
-                        {`${transaction.on_chain_tx ? transaction.on_chain_tx.slice(0, 5) : ''}...`}
+                        {`${transaction.on_chain_tx ? transaction.on_chain_tx.slice(0, 5) : ''}`}
+                        {`${transaction.on_chain_tx ? '...' : ''}`}
+                        {`${transaction.on_chain_tx ? transaction.on_chain_tx.slice(transaction.on_chain_tx.length - 5) : ''}`}
                         <Button variant="ghost" size="sm" onClick={() => copyToClipboard(transaction.on_chain_tx || '')}>
                           <Copy className="h-4 w-4" />
                         </Button>

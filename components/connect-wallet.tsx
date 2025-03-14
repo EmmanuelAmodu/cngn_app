@@ -1,6 +1,8 @@
 "use client";
 
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { WalletIcon } from "lucide-react";
+import { Button } from "@/components/ui/button"
 
 export default function ConnectWallet() {
 	return (
@@ -19,30 +21,16 @@ export default function ConnectWallet() {
 					// When not connected, show the connect button.
 					if (!account) {
 						return (
-							<button
-								type="button"
-								onClick={openConnectModal}
-								className="bg-primary hover:bg-primary/90 border px-4 py-2 rounded-md flex items-center gap-2"
-							>
-								<span className="h-4 w-4">
-									<svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    className="h-4 w-4"
-                  >
-                    <title>Wallet Icon</title>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M16 11V5a1 1 0 00-1-1H5a1 1 0 00-1 1v14a1 1 0 001 1h10a1 1 0 001-1v-6m-4 0h4m-4 0V9m0 2h.01"
-                    />
-                  </svg>
-								</span>
-								Connect Wallet
-							</button>
+							<div className="flex flex-col gap-2">
+								<Button
+									type="button"
+									onClick={openConnectModal}
+									className="bg-primary hover:bg-primary/90 border px-4 py-2 rounded-md gap-2"
+								>
+									<WalletIcon className="mr-2 h-4 w-4" />
+									Connect Wallet
+								</Button>
+							</div>
 						);
 					}
 

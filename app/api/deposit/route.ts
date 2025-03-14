@@ -7,7 +7,7 @@ import {
   getChain,
   getPublicClient,
 } from "@/lib/blockchain";
-import type { Address, Hex } from "viem";
+import { erc20Abi, type Address, type Hex } from "viem";
 import Bull, { type Job } from "bull";
 import { randomBytes } from "crypto";
 import { getCustomerTransactions } from "@/lib/paystack-client";
@@ -141,14 +141,18 @@ async function commitOnChain(
   try {
     // Get wallet client for the specified chain
     const walletClient = getWalletClient(chainId);
-    if (!walletClient) {
-      throw new Error("Wallet client not initialized");
-    }
+    const publicClient = getPublicClient(chainId);
 
     console.log(`Executing deposit transaction on chain ${chainId}...`);
 
+    const decimals = await publicClient.readContract({
+      address: getContractAddress(Number(chainId)),
+      functionName: 'decimals',
+      abi: erc20Abi
+    });
+
     // Convert amount to BigInt with proper decimal places (18 decimals for ERC20)
-    const amountInWei = BigInt(amount * 10 ** 18);
+    const amountInWei = BigInt(amount * 10 ** decimals);
 
     if (!walletClient.account) {
       throw new Error("Wallet client account not initialized");
@@ -159,7 +163,7 @@ async function commitOnChain(
 
     // Execute deposit transaction
     const txHash = await walletClient.writeContract({
-      address: getContractAddress(Number(chainId) || 1),
+      address: getContractAddress(Number(chainId)),
       abi: contractABI,
       account: walletClient.account,
       functionName: "onRamp",

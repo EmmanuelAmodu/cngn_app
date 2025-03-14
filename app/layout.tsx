@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 if (process.env.ADMIN_PRIVATE_KEY) {
   try {
     console.log("Initializing blockchain services...")
-    initializeWalletClient(process.env.ADMIN_PRIVATE_KEY)
+    initializeWalletClient(process.env.ADMIN_PRIVATE_KEY, 8453)
     startEventListeners()
     console.log("Blockchain services initialized successfully")
   } catch (error) {
@@ -41,7 +41,5 @@ export default function RootLayout({
     </html>
   )
 }
-
-
 
 import './globals.css'

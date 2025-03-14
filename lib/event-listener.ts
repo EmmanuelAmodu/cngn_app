@@ -1,4 +1,4 @@
-import { publicClient, getContractAddress, contractABI, getPublicClient } from "./blockchain"
+import { getContractAddress, contractABI, getPublicClient } from "./blockchain"
 import { supabaseAdmin } from "./supabase"
 import { sendNGNToBank } from "./bank-transfer"
 import { sendCNGNOnDestinationChain } from "./cross-chain"
@@ -94,7 +94,7 @@ export async function startEventListeners() {
   // Create event listeners for each supported chain
   const unsubscribers = Object.entries(chainConfigs).map(([chainIdStr, config]) => {
     const chainId = Number(chainIdStr)
-    const client = chainId === publicClient.chain.id ? publicClient : getPublicClient(chainId)
+    const client = getPublicClient(chainId)
 
     console.log(`Starting event listeners for chain ${chainId} (${config.name})`)
 
@@ -102,7 +102,7 @@ export async function startEventListeners() {
     const unsubscribeWithdrawal = client.watchContractEvent({
       address: getContractAddress(chainId),
       abi: contractABI,
-      eventName: "Withdrawal",
+      eventName: "OffRamp",
       onLogs: async (logs) => {
         for (const log of logs) {
           const { args } = log
@@ -141,7 +141,7 @@ export async function startEventListeners() {
     const unsubscribeBridgeFrom = client.watchContractEvent({
       address: getContractAddress(chainId),
       abi: contractABI,
-      eventName: "BridgeFrom",
+      eventName: "BridgeEntry",
       onLogs: async (logs) => {
         for (const log of logs) {
           const { args } = log
@@ -186,7 +186,7 @@ export async function startEventListeners() {
     const unsubscribeBridgeTo = client.watchContractEvent({
       address: getContractAddress(chainId),
       abi: contractABI,
-      eventName: "BridgeTo",
+      eventName: "BridgeExit",
       onLogs: async (logs) => {
         for (const log of logs) {
           const { args } = log
@@ -221,7 +221,9 @@ export async function startEventListeners() {
 
   // Return a function that unsubscribes all listeners
   return () => {
-    unsubscribers.forEach((unsubscribe) => unsubscribe())
+    for (const unsubscribe of unsubscribers) {
+      unsubscribe()
+    }
   }
 }
 

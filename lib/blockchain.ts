@@ -1,72 +1,76 @@
-import { createPublicClient, createWalletClient, http, type Address, type WalletClient, type Chain } from "viem"
-import { privateKeyToAccount } from "viem/accounts"
-import { mainnet } from "viem/chains"
-import { chainConfigs } from "./constants"
-import { DEX_ABI } from "./abi/dex-abi"
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  type Address,
+  type WalletClient,
+  type Chain,
+  type PublicClient,
+} from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { mainnet } from "viem/chains";
+import { chainConfigs } from "./constants";
+import { DEX_ABI } from "./abi/dex-abi";
 
-export const getContractAddress = (chainId = 1): Address => {
+export const getContractAddress = (chainId: number): Address => {
   return (
-    (chainConfigs[chainId]?.contractAddress as Address) ||
-    (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as Address) ||
-    ("0x1234567890123456789012345678901234567890" as Address)
-  )
-}
+    (chainConfigs[chainId]?.contractAddress as Address)
+  );
+};
 
 export const getTokenAddress = (chainId = 1): Address => {
-  return (
-    (chainConfigs[chainId]?.tokenAddress as Address)
-  )
-}
+  return chainConfigs[chainId]?.tokenAddress as Address;
+};
 
 export const getChain = (chainId = 1): Chain => {
-  return chainConfigs[chainId]?.chain || mainnet
-}
+  return chainConfigs[chainId]?.chain || mainnet;
+};
+
+let walletClient: WalletClient | null = null;
 
 // Create a public client for a specific chain
-export const getPublicClient = (chainId = 1) => {
-  const chain = getChain(chainId)
-  const rpcUrl = chainConfigs[chainId].rpcUrl
+export const getPublicClient = (chainId: number) => {
+  const chain = getChain(chainId);
+  const rpcUrl = chainConfigs[chainId].rpcUrl;
 
   return createPublicClient({
     chain,
     transport: http(rpcUrl),
-  })
-}
+  });
+};
 
-let walletClient: WalletClient | null = null
-
-export function initializeWalletClient(privateKey: string, chainId = 1) {
-  console.log("Chain ID", chainId)
+export function initializeWalletClient(privateKey: string, chainId: number) {
+  console.log("Chain ID", chainId);
   try {
-    console.log("Initializing wallet client...")
-    const account = privateKeyToAccount(privateKey as `0x${string}`)
-    const chain = getChain(chainId)
-    const rpcUrl = chainConfigs[chainId].rpcUrl
+    console.log("Initializing wallet client...");
+    const account = privateKeyToAccount(privateKey as `0x${string}`);
+    const chain = getChain(chainId);
+    const rpcUrl = chainConfigs[chainId].rpcUrl;
 
     walletClient = createWalletClient({
       account,
       chain,
       transport: http(rpcUrl),
-    })
-    console.log("Wallet client initialized successfully")
-    return walletClient
+    });
+
+    console.log("Wallet client initialized successfully");
+    return walletClient;
   } catch (error) {
-    console.error("Error initializing wallet client:", error)
-    throw error
+    console.error("Error initializing wallet client:", error);
+    throw error;
   }
 }
 
-export function getWalletClient(chainId = 1) {
+export function getWalletClient(chainId: number) {
   if (!walletClient) {
-    console.log("Initializing wallet client with admin private key...")
+    console.log("Initializing wallet client with admin private key...");
     if (!process.env.ADMIN_PRIVATE_KEY) {
-      throw new Error("ADMIN_PRIVATE_KEY is not defined")
+      throw new Error("ADMIN_PRIVATE_KEY is not defined");
     }
-    return initializeWalletClient(process.env.ADMIN_PRIVATE_KEY, chainId)
+    return initializeWalletClient(process.env.ADMIN_PRIVATE_KEY, chainId);
   }
-  return walletClient
+  return walletClient;
 }
 
 // Export the contract ABI
-export { DEX_ABI as contractABI }
-
+export { DEX_ABI as contractABI };

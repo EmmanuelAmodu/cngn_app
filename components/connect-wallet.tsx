@@ -22,7 +22,7 @@ export default function ConnectWallet() {
 							<button
 								type="button"
 								onClick={openConnectModal}
-								className="bg-primary hover:bg-primary/90 px-4 py-2 rounded-md flex items-center gap-2"
+								className="border px-4 py-2 rounded-md flex items-center gap-2"
 							>
 								<span className="h-4 w-4">
 									<svg

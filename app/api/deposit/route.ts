@@ -153,10 +153,15 @@ async function commitOnChain(
     });
 
     // Convert amount to BigInt with proper decimal places (18 decimals for ERC20)
-    const amountInWei = BigInt(amount * 10 ** decimals);
+    const amountMinusFees = amount - 50;
+    const amountInWei = BigInt(amountMinusFees * 10 ** decimals);
 
     if (!walletClient.account) {
       throw new Error("Wallet client account not initialized");
+    }
+
+    if (amountInWei <= 0) {
+      throw new Error("Invalid amount");
     }
 
     // Get the chain for the specified chainId

@@ -18,8 +18,8 @@ export const getContractAddress = (chainId: number): Address => {
   );
 };
 
-export const getTokenAddress = (chainId = 1): Address => {
-  return chainConfigs[chainId]?.tokenAddress as Address;
+export const getTokenAddress = (chainId: number): Address => {
+  return chainConfigs[chainId].tokenAddress as Address;
 };
 
 export const getChain = (chainId = 1): Chain => {

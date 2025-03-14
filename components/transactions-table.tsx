@@ -48,10 +48,10 @@ export default function TransactionsTable({transactions, copyToClipboard}: Trans
             Processing
           </Badge>
         )
-      case "successful":
+      case "completed":
         return (
           <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">
-            Successful
+            Completed
           </Badge>
         )
       default:
@@ -109,10 +109,10 @@ export default function TransactionsTable({transactions, copyToClipboard}: Trans
             </Button>
             <Button
               variant={activeFilter === "successful" ? "default" : "outline"}
-              onClick={() => setActiveFilter("successful")}
+              onClick={() => setActiveFilter("completed")}
               className="rounded-full"
             >
-              Successful
+              Completed
             </Button>
           </div>
           <div className="rounded-md border">

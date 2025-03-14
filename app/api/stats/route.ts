@@ -14,7 +14,7 @@ export async function GET() {
     // Try to get deposits data with count
     try {
       const { count, error } = await supabaseAdmin
-        .from("deposits")
+        .from("onramps")
         .select("*", { count: "exact", head: true })
         .eq("status", "completed")
 
@@ -28,7 +28,7 @@ export async function GET() {
     // Try to get withdrawals data with count
     try {
       const { count, error } = await supabaseAdmin
-        .from("withdrawals")
+        .from("offramps")
         .select("*", { count: "exact", head: true })
         .eq("status", "completed")
 
@@ -55,7 +55,7 @@ export async function GET() {
 
     // Try to get sums separately for efficiency
     try {
-      const { data, error } = await supabaseAdmin.from("deposits").select("amount").eq("status", "completed")
+      const { data, error } = await supabaseAdmin.from("onramps").select("amount").eq("status", "completed")
 
       if (!error && data) {
         onrampVolume = data.reduce((sum, d) => sum + (d.amount || 0), 0)
@@ -65,7 +65,7 @@ export async function GET() {
     }
 
     try {
-      const { data, error } = await supabaseAdmin.from("withdrawals").select("amount").eq("status", "completed")
+      const { data, error } = await supabaseAdmin.from("offramps").select("amount").eq("status", "completed")
 
       if (!error && data) {
         offrampVolume = data.reduce((sum, w) => sum + (w.amount || 0), 0)

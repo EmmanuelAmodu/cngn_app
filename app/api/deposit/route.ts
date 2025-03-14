@@ -6,6 +6,7 @@ import {
   contractABI,
   getChain,
   getPublicClient,
+  getTokenAddress,
 } from "@/lib/blockchain";
 import { erc20Abi, type Address, type Hex } from "viem";
 import Bull, { type Job } from "bull";
@@ -146,7 +147,7 @@ async function commitOnChain(
     console.log(`Executing deposit transaction on chain ${chainId}...`);
 
     const decimals = await publicClient.readContract({
-      address: getContractAddress(Number(chainId)),
+      address: getTokenAddress(Number(chainId)),
       functionName: 'decimals',
       abi: erc20Abi
     });

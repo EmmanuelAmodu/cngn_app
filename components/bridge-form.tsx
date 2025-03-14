@@ -14,8 +14,8 @@ import { Steps, Step } from "@/components/ui/steps"
 import { chainConfigs } from "@/lib/constants"
 
 interface BridgeFormProps {
-  address: string | null
-  chainId: number | null
+  address: string | undefined
+  chainId: number | undefined
 }
 
 interface Chain {

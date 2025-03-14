@@ -9,10 +9,11 @@ import BridgeForm from "@/components/bridge-form"
 import ConnectWallet from "@/components/connect-wallet"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Stats } from "@/components/stats"
+import { useAccount } from "wagmi"
 
 export default function Home() {
-  const [address, setAddress] = useState<string | null>(null)
-  const [chainId, setChainId] = useState<number | null>(null)
+  // Use wagmi hooks to get the connected address and current chain
+  const { address, chainId } = useAccount();
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 bg-background">
@@ -25,7 +26,7 @@ export default function Home() {
           </div>
           <CardDescription>Easily onramp, offramp, and bridge your cNGN tokens</CardDescription>
           <div className="mt-4">
-            <ConnectWallet address={address} setAddress={setAddress} setChainId={setChainId} chainId={chainId} />
+            <ConnectWallet />
           </div>
           <div className="mt-8">
             <Stats />

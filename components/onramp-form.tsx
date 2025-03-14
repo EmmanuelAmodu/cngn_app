@@ -15,8 +15,8 @@ import { chainConfigs } from "@/lib/constants"
 import TransactionsTable, { type TransactionTableData } from "./transactions-table"
 
 interface OnrampFormProps {
-  address: string | null
-  chainId: number | null
+  address: string | undefined
+  chainId: number | undefined
 }
 
 interface VirtualAccount {
@@ -51,7 +51,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
     if (address) {
       console.log("Fetching Account")
       setIsLoading(true)
-      fetchVirtualAccountAPI(address).then(data => {
+      fetchVirtualAccountAPI(address.toLowerCase()).then(data => {
         if (data) {
           console.log("VA Account data")
           setVirtualAccount(data)

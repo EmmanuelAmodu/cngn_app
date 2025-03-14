@@ -151,9 +151,13 @@ export async function getBankList() {
   }
 }
 
-export async function getCustomerTransactions(customerId: number) {
+export async function getCustomerTransactions(customerId?: number) {
+  const params = new URLSearchParams({});
+  if (customerId) params.append("customer", customerId.toString());
+  params.append("status", "success");
+
   try {
-    const url = `https://api.paystack.co/transaction?customer=${customerId}&status=success`;
+    const url = `https://api.paystack.co/transaction?customer=${params.toString()}`;
     const options = {
       method: "GET",
       headers: {

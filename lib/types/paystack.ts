@@ -182,3 +182,54 @@ export interface PaystackResolveAccountResponse {
     account_name: string;
   };
 };
+
+export interface PaystackTransferRecipientResponse {
+  status: boolean;
+  message: string;
+  data: PaystackTransferRecipient;
+};
+
+export interface PaystackTransferRecipient {
+  active: boolean;
+  createdAt: string; // ISO timestamp
+  currency: string;
+  domain: string;
+  id: number;
+  integration: number;
+  name: string;
+  recipient_code: string;
+  type: string;
+  updatedAt: string; // ISO timestamp
+  is_deleted: boolean;
+  details: PaystackRecipientDetails;
+};
+
+export interface PaystackRecipientDetails {
+  authorization_code: string | null;
+  account_number: string;
+  account_name: string | null;
+  bank_code: string;
+  bank_name: string;
+};
+
+export interface PaystackTransferResponse {
+  status: boolean;
+  message: string;
+  data: PaystackTransferData;
+};
+
+export interface PaystackTransferData {
+  reference: string;
+  integration: number;
+  domain: string;
+  amount: number;
+  currency: string;
+  source: string;
+  reason: string;
+  recipient: number;
+  status: 'success' | 'failed' | 'pending'; // extend if needed
+  transfer_code: string;
+  id: number;
+  createdAt: string; // ISO timestamp
+  updatedAt: string; // ISO timestamp
+};

@@ -112,7 +112,7 @@ export async function sendCNGNOnDestinationChain(
     const hash = await walletClient.writeContract({
       address: chainConfig.contractAddress as `0x${string}`,
       abi: DEX_ABI,
-      functionName: "bridgeTo",
+      functionName: "bridgeExit",
       args: [
         userAddress as `0x${string}`,
         amount,

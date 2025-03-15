@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle2, AlertCircle, Loader2, Copy, LucideSendToBack, Navigation } from "lucide-react"
+import { CheckCircle2, AlertCircle, Loader2, Copy, LucideSendToBack, Navigation, SkipBack, SkipBackIcon, SkipForward } from "lucide-react"
 import { Steps, Step } from "@/components/ui/steps"
 import { Card, CardContent } from "@/components/ui/card"
 import { generateVirtualAccountAPI, confirmDepositAPI, fetchVirtualAccountAPI } from "@/lib/api"
@@ -297,58 +297,61 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
         )}
 
         {currentStep === 1 && virtualAccount && (
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              <div className="space-y-1">
-                <Label className="text-sm text-muted-foreground">Bank Name</Label>
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{virtualAccount.bankName}</span>
-                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(virtualAccount.bankName)}>
-                    <Copy className="h-4 w-4" />
-                  </Button>
+          <div>
+            <SkipForward onClick={() => setCurrentStep(currentStep + 1)} />
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                <div className="space-y-1">
+                  <Label className="text-sm text-muted-foreground">Bank Name</Label>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{virtualAccount.bankName}</span>
+                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(virtualAccount.bankName)}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-1">
-                <Label className="text-sm text-muted-foreground">Account Number</Label>
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{virtualAccount.accountNumber}</span>
-                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(virtualAccount.accountNumber)}>
-                    <Copy className="h-4 w-4" />
-                  </Button>
+                <div className="space-y-1">
+                  <Label className="text-sm text-muted-foreground">Account Number</Label>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{virtualAccount.accountNumber}</span>
+                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(virtualAccount.accountNumber)}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-1">
-                <Label className="text-sm text-muted-foreground">Account Name</Label>
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{virtualAccount.accountName}</span>
-                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(virtualAccount.accountName)}>
-                    <Copy className="h-4 w-4" />
-                  </Button>
+                <div className="space-y-1">
+                  <Label className="text-sm text-muted-foreground">Account Name</Label>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{virtualAccount.accountName}</span>
+                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(virtualAccount.accountName)}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="pt-4">
-                <Alert className="bg-blue-50 text-blue-800 border-blue-200">
-                  <AlertDescription>
-                    Please transfer above 5,000 NGN to the virtual account above. Once you've made the transfer, click the
-                    button below.
-                  </AlertDescription>
-                </Alert>
-              </div>
+                <div className="pt-4">
+                  <Alert className="bg-blue-50 text-blue-800 border-blue-200">
+                    <AlertDescription>
+                      Please transfer above 5,000 NGN to the virtual account above. Once you've made the transfer, click the
+                      button below.
+                    </AlertDescription>
+                  </Alert>
+                </div>
 
-              <Button onClick={handleConfirmDeposit} disabled={isLoading} className="w-full">
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}I Have Made A Transfer
-              </Button>
-            </CardContent>
-          </Card>
+                <Button onClick={handleConfirmDeposit} disabled={isLoading} className="w-full">
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}I Have Made A Transfer
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {currentStep === 2 && (
           <div>
             {/** Back Button */}
-            <Navigation />
+            <SkipBack onClick={() => setCurrentStep(currentStep - 1)} />
             <TransactionsTable transactions={onRampTransactions} copyToClipboard={copyToClipboard} />
           </div>
         )}

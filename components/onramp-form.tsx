@@ -298,7 +298,6 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 
         {currentStep === 1 && virtualAccount && (
           <div>
-            <SkipForward onClick={() => setCurrentStep(currentStep + 1)} />
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div className="space-y-1">
@@ -350,8 +349,6 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 
         {currentStep === 2 && (
           <div>
-            {/** Back Button */}
-            <SkipBack onClick={() => setCurrentStep(currentStep - 1)} />
             <TransactionsTable transactions={onRampTransactions} copyToClipboard={copyToClipboard} />
           </div>
         )}

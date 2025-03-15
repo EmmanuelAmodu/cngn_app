@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle2, AlertCircle, Loader2, Copy } from "lucide-react"
+import { CheckCircle2, AlertCircle, Loader2, Copy, LucideSendToBack, Navigation } from "lucide-react"
 import { Steps, Step } from "@/components/ui/steps"
 import { Card, CardContent } from "@/components/ui/card"
 import { generateVirtualAccountAPI, confirmDepositAPI, fetchVirtualAccountAPI } from "@/lib/api"
@@ -347,6 +347,8 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 
         {currentStep === 2 && (
           <div>
+            {/** Back Button */}
+            <Navigation />
             <TransactionsTable transactions={onRampTransactions} copyToClipboard={copyToClipboard} />
           </div>
         )}

@@ -8,8 +8,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle2, AlertCircle, Loader2, ExternalLink } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
-import { approveTokens, burnTokens, verifyBankAccount, initiateOfframp } from "@/lib/contract"
-import { getSupportedBanksAPI } from "@/lib/api"
+import { approveTokens, burnTokens } from "@/lib/contract"
+import { getSupportedBanksAPI, verifyBankAccountAPI, initiateOfframpAPI } from "@/lib/api"
 import { Steps, Step } from "@/components/ui/steps"
 import { chainConfigs } from "@/lib/constants"
 
@@ -71,7 +71,7 @@ export default function OfframpForm({ address, chainId }: OfframpFormProps) {
             params: [{ chainId: `0x${chainId.toString(16)}` }],
           })
           return true
-        } catch (switchError: any) {
+        } catch (switchError) {
           console.error("Failed to switch networks:", switchError)
           return false
         }
@@ -124,19 +124,19 @@ export default function OfframpForm({ address, chainId }: OfframpFormProps) {
     setIsVerifying(true)
 
     try {
-      const result = await verifyBankAccount(bankDetails.accountNumber, bankDetails.bankCode)
+      const result = await verifyBankAccountAPI(bankDetails.accountNumber, bankDetails.bankCode)
 
-      if (result.isValid) {
+      if (result.status) {
         setBankDetails((prev) => ({
           ...prev,
-          accountName: result.accountName,
+          accountName: result.data.accountName,
         }))
         setSuccess("Bank account verified successfully!")
       } else {
         throw new Error("Invalid bank account")
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to verify bank account")
+    } catch (err) {
+      setError((err as { message: string }).message || "Failed to verify bank account")
     } finally {
       setIsVerifying(false)
     }
@@ -149,7 +149,7 @@ export default function OfframpForm({ address, chainId }: OfframpFormProps) {
       return
     }
 
-    if (!amount || isNaN(Number.parseFloat(amount)) || Number.parseFloat(amount) <= 0) {
+    if (!amount || Number.isNaN(Number.parseFloat(amount)) || Number.parseFloat(amount) <= 0) {
       setError("Please enter a valid amount")
       return
     }
@@ -169,12 +169,12 @@ export default function OfframpForm({ address, chainId }: OfframpFormProps) {
     setIsLoading(true)
 
     try {
-      const hash = await approveTokens(amount, chainId || 1)
+      const hash = await approveTokens(amount, chainId)
       setTxHash(hash)
       setCurrentStep(2)
       setSuccess("Token spend approved successfully!")
-    } catch (err: any) {
-      setError(err.message || "Failed to approve tokens")
+    } catch (err) {
+      setError((err as { message: string }).message || "Failed to approve tokens")
     } finally {
       setIsLoading(false)
     }
@@ -191,19 +191,19 @@ export default function OfframpForm({ address, chainId }: OfframpFormProps) {
 
     try {
       // First burn the tokens
-      const hash = await burnTokens(amount, bankDetails, chainId || 1)
+      const hash = await burnTokens(amount, chainId)
       setTxHash(hash)
 
       // Then initiate the offramp process
-      const offrampResult = await initiateOfframp(amount, bankDetails, chainId || 1)
-      setOfframpReference(offrampResult.reference)
+      const offrampResult = await initiateOfframpAPI(amount, bankDetails, chainId)
+      setOfframpReference(offrampResult.data.reference)
 
       setCurrentStep(3)
       setSuccess(
-        `Tokens burned successfully! You will receive ${amount} NGN in your bank account within ${new Date(offrampResult.estimatedTime).getMinutes()} minutes.`,
+        `Tokens burned successfully! You will receive ${amount} NGN in your bank account within ${new Date(offrampResult.data.estimatedTime).getMinutes()} minutes.`,
       )
-    } catch (err: any) {
-      setError(err.message || "Failed to burn tokens")
+    } catch (err) {
+      setError((err as { message: string }).message || "Failed to burn tokens")
     } finally {
       setIsLoading(false)
     }

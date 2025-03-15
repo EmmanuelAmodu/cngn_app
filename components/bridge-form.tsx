@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle2, AlertCircle, Loader2, ExternalLink } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
-import { bridgeCNGN, initiateBridge, checkBridgeStatus } from "@/lib/contract"
+import { bridgeToken, initiateBridge, checkBridgeStatus } from "@/lib/contract"
 import { getSupportedChainsAPI } from "@/lib/api"
 import { Steps, Step } from "@/components/ui/steps"
 import { chainConfigs } from "@/lib/constants"
@@ -175,7 +175,7 @@ export default function BridgeForm({ address, chainId }: BridgeFormProps) {
       )
 
       // Then call bridgeFrom on the source chain with the bridgeId
-      const hash = await bridgeCNGN(amount, Number.parseInt(destinationChainId), chainId || 1)
+      const hash = await bridgeToken(amount, Number.parseInt(destinationChainId), chainId || 1)
       setTxHash(hash)
 
       setBridgeReference(bridgeResult.reference)

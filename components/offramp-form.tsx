@@ -8,10 +8,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle2, AlertCircle, Loader2, ExternalLink } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
-import { approveTokens, burnTokens } from "@/lib/contract"
+import { approveTokens, offRampToken } from "@/lib/contract"
 import { getSupportedBanksAPI, verifyBankAccountAPI, initiateOfframpAPI } from "@/lib/api"
 import { Steps, Step } from "@/components/ui/steps"
-import { chainConfigs } from "@/lib/constants"
+import type { Hex } from "viem"
 
 interface OfframpFormProps {
   address: string | undefined
@@ -42,48 +42,6 @@ export default function OfframpForm({ address, chainId }: OfframpFormProps) {
   })
   const [isVerifying, setIsVerifying] = useState(false)
   const [offrampReference, setOfframpReference] = useState<string | null>(null)
-
-  // Add this function at the beginning of the OfframpForm component
-  const ensureCorrectNetwork = async () => {
-    if (!chainId) {
-      setError("Please connect your wallet first")
-      return false
-    }
-
-    if (!window.ethereum) {
-      setError("MetaMask is not installed")
-      return false
-    }
-
-    try {
-      const chainIdHex = await window.ethereum.request({
-        method: "eth_chainId",
-      })
-      const currentChainId = Number.parseInt(chainIdHex, 16)
-
-      if (currentChainId !== chainId) {
-        setError(`Please switch your wallet to ${chainConfigs[chainId].name} network to continue`)
-
-        // Prompt the user to switch networks
-        try {
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: `0x${chainId.toString(16)}` }],
-          })
-          return true
-        } catch (switchError) {
-          console.error("Failed to switch networks:", switchError)
-          return false
-        }
-      }
-
-      return true
-    } catch (error) {
-      console.error("Error checking network:", error)
-      setError("Failed to verify network. Please try again.")
-      return false
-    }
-  }
 
   // Load supported banks
   useEffect(() => {
@@ -161,10 +119,6 @@ export default function OfframpForm({ address, chainId }: OfframpFormProps) {
 
   // Update the handleApprove function to check network first
   const handleApprove = async () => {
-    // Ensure wallet is on the correct network
-    const isCorrectNetwork = await ensureCorrectNetwork()
-    if (!isCorrectNetwork) return
-
     setError(null)
     setIsLoading(true)
 
@@ -181,22 +135,26 @@ export default function OfframpForm({ address, chainId }: OfframpFormProps) {
   }
 
   // Update the handleBurn function to check network first
-  const handleBurn = async () => {
-    // Ensure wallet is on the correct network
-    const isCorrectNetwork = await ensureCorrectNetwork()
-    if (!isCorrectNetwork) return
-
+  const handleOffRamp = async () => {
     setError(null)
     setIsLoading(true)
 
     try {
-      // First burn the tokens
-      const hash = await burnTokens(amount, chainId)
-      setTxHash(hash)
-
-      // Then initiate the offramp process
+      // First initiate the offramp process
       const offrampResult = await initiateOfframpAPI(amount, bankDetails, chainId)
       setOfframpReference(offrampResult.data.reference)
+
+      if (!offrampResult.status) {
+        throw new Error("Failed to initiate offramp")
+      }
+
+      if (!chainId) {
+        throw new Error("Chain ID not found")
+      }
+
+      // Then call the off ramp function
+      const hash = await offRampToken(amount, chainId,  offrampResult.data.reference as Hex)
+      setTxHash(hash)
 
       setCurrentStep(3)
       setSuccess(
@@ -329,7 +287,7 @@ export default function OfframpForm({ address, chainId }: OfframpFormProps) {
                 </AlertDescription>
               </Alert>
 
-              <Button onClick={handleBurn} disabled={isLoading} className="w-full">
+              <Button onClick={handleOffRamp} disabled={isLoading} className="w-full">
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Burn Tokens
               </Button>

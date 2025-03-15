@@ -1,10 +1,10 @@
 import { chainConfigs, TOKEN_DECIMALS } from "./constants";
-import { ethers } from "ethers";
+import { createWalletClient, custom, type Hex, parseUnits, toHex } from "viem";
 import { DEX_ABI } from "./abi/dex-abi";
 import { erc20Abi } from "viem";
 
-// Helper function to get ethers provider and signer
-const getProviderAndSigner = async () => {
+// Helper function to create a viem wallet client using MetaMask
+const getWalletClient = async (chainId: number) => {
   if (typeof window.ethereum === "undefined" || !window.ethereum.isMetaMask) {
     throw new Error("MetaMask is not installed");
   }
@@ -15,17 +15,23 @@ const getProviderAndSigner = async () => {
     throw new Error("User denied account access");
   }
 
-  const provider = new ethers.BrowserProvider(window.ethereum);
-  const signer = await provider.getSigner();
-  return { provider, signer };
+  // Optionally use a viem chain from your chainConfigs if provided.
+  const chainConfig = chainConfigs[chainId];
+
+  const walletClient = createWalletClient({
+    chain: chainConfig.chain,
+    transport: custom(window.ethereum),
+  });
+
+  return walletClient;
 };
 
-// Convert cNGN amount to the correct decimals (18 decimals)
+// Convert cNGN amount to the correct decimals (18 decimals) using viem's parseUnits
 const parseCNGNAmount = (amount: string) => {
-  return ethers.parseUnits(amount, TOKEN_DECIMALS);
+  return parseUnits(amount, TOKEN_DECIMALS);
 };
 
-// Add this helper function to ensure the wallet is on the correct network
+// Helper function to ensure the wallet is on the correct network
 const ensureCorrectNetwork = async (chainId = 1): Promise<boolean> => {
   if (!window.ethereum) {
     throw new Error("MetaMask is not installed");
@@ -37,15 +43,14 @@ const ensureCorrectNetwork = async (chainId = 1): Promise<boolean> => {
   const currentChainId = Number.parseInt(chainIdHex, 16);
 
   if (currentChainId !== chainId) {
-    // Prompt the user to switch networks
     try {
+      // Attempt to switch networks
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
         params: [{ chainId: `0x${chainId.toString(16)}` }],
       });
       return true;
     } catch (switchError) {
-      // This error code indicates that the chain has not been added to MetaMask
       if ((switchError as { code: number }).code === 4902) {
         try {
           const network = chainConfigs[chainId];
@@ -71,12 +76,11 @@ const ensureCorrectNetwork = async (chainId = 1): Promise<boolean> => {
             ],
           });
 
-          // After adding the network, try to switch to it again
+          // After adding, try switching again.
           await window.ethereum.request({
             method: "wallet_switchEthereumChain",
             params: [{ chainId: `0x${chainId.toString(16)}` }],
           });
-
           return true;
         } catch (addError) {
           console.error("Error adding network:", addError);
@@ -100,26 +104,35 @@ const ensureCorrectNetwork = async (chainId = 1): Promise<boolean> => {
 };
 
 // Approve cNGN to be spent by the DEX contract
-export const approveCNGN = async (
+export const approveTokenSpend = async (
   amount: string,
   chainId = 1
 ): Promise<string> => {
   try {
-    // Ensure wallet is on the correct network
     await ensureCorrectNetwork(chainId);
 
-    const { signer } = await getProviderAndSigner();
-    const tokenAddress = chainConfigs[chainId]?.tokenAddress;
-    const cngnContract = new ethers.Contract(tokenAddress, erc20Abi, signer);
+    const walletClient = await getWalletClient(chainId);
+    if (!walletClient.account) throw new Error("Account not found");
+
+    const tokenAddress = chainConfigs[chainId].tokenAddress;
+    if (!tokenAddress)
+      throw new Error("Token address not found in chain configuration");
 
     const contractAddress =
       chainConfigs[chainId]?.contractAddress ||
       process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-    const parsedAmount = parseCNGNAmount(amount);
-    const tx = await cngnContract.approve(contractAddress, parsedAmount);
+    if (!contractAddress) throw new Error("Contract address not found");
 
-    await tx.wait();
-    return tx.hash;
+    const parsedAmount = parseCNGNAmount(amount);
+    const txHash = await walletClient.writeContract({
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [contractAddress, parsedAmount],
+      account: (await walletClient.getAddresses())[0],
+    });
+
+    return txHash;
   } catch (error) {
     console.error("Error approving cNGN:", error);
     throw new Error(
@@ -128,27 +141,29 @@ export const approveCNGN = async (
   }
 };
 
-// Withdraw USDC from the DEX contract
-export const withdrawUSDC = async (
+// Deposit Token to the contract
+export const offRampToken = async (
   amount: string,
-  chainId = 1
+  chainId: number,
+  offRampId: Hex
 ): Promise<string> => {
   try {
-    const { signer } = await getProviderAndSigner();
+    const walletClient = await getWalletClient(chainId);
     const contractAddress =
       chainConfigs[chainId]?.contractAddress ||
       process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-    if (!contractAddress) {
-      throw new Error("Contract address not found");
-    }
-
-    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer);
+    if (!contractAddress) throw new Error("Contract address not found");
 
     const parsedAmount = parseCNGNAmount(amount);
-    const tx = await dexContract.withdraw(parsedAmount);
+    const txHash = await walletClient.writeContract({
+      address: contractAddress,
+      abi: DEX_ABI,
+      functionName: "offRamp",
+      args: [parsedAmount, offRampId],
+      account: (await walletClient.getAddresses())[0],
+    });
 
-    await tx.wait();
-    return tx.hash;
+    return txHash;
   } catch (error) {
     console.error("Error withdrawing USDC:", error);
     throw new Error(
@@ -158,69 +173,40 @@ export const withdrawUSDC = async (
 };
 
 // Bridge cNGN to another chain
-export const bridgeCNGN = async (
+export const bridgeToken = async (
   amount: string,
   destinationChainId: number,
   sourceChainId = 1
 ): Promise<string> => {
   try {
-    // Ensure wallet is on the correct network
     await ensureCorrectNetwork(sourceChainId);
 
-    const { signer } = await getProviderAndSigner();
+    const walletClient = await getWalletClient(sourceChainId);
     const contractAddress =
       chainConfigs[sourceChainId]?.contractAddress ||
       process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-    if (!contractAddress) {
-      throw new Error("Contract address not found");
-    }
+    if (!contractAddress) throw new Error("Contract address not found");
 
-    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer);
-
-    // Generate a unique bridge ID
-    const bridgeId = ethers.randomBytes(32);
+    // Generate a unique bridge ID using Web Crypto API
+    const randomBytes = new Uint8Array(32);
+    crypto.getRandomValues(randomBytes);
+    const bridgeId = toHex(randomBytes);
 
     const parsedAmount = parseCNGNAmount(amount);
-    const tx = await dexContract.bridgeFrom(
-      parsedAmount,
-      destinationChainId,
-      bridgeId
-    );
+    const txHash = await walletClient.writeContract({
+      address: contractAddress,
+      abi: DEX_ABI,
+      functionName: "bridgeEntry",
+      args: [parsedAmount, destinationChainId, bridgeId],
+      account: (await walletClient.getAddresses())[0],
+    });
 
-    await tx.wait();
-    return tx.hash;
+    return txHash;
   } catch (error) {
     console.error("Error bridging cNGN:", error);
     throw new Error(
       (error as { message: string }).message || "Failed to bridge cNGN"
     );
-  }
-};
-
-// Mint tokens after confirmed deposit
-export const mintTokens = async (
-  amount: string,
-  chainId = 1
-): Promise<string> => {
-  try {
-    const { signer } = await getProviderAndSigner();
-    const contractAddress =
-      chainConfigs[chainId]?.contractAddress ||
-      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-    if (!contractAddress) {
-      throw new Error("Contract address not found");
-    }
-
-    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer);
-
-    // Call your contract's function to mint tokens
-    const tx = await dexContract.mintTokens(amount);
-    await tx.wait();
-
-    return tx.hash;
-  } catch (error) {
-    console.error("Error minting tokens:", error);
-    throw new Error((error as { message: string }).message || "Failed to mint tokens");
   }
 };
 
@@ -230,53 +216,30 @@ export const approveTokens = async (
   chainId = 1
 ): Promise<string> => {
   try {
-    const { signer } = await getProviderAndSigner();
+    const walletClient = await getWalletClient(chainId);
     const tokenAddress = chainConfigs[chainId]?.tokenAddress;
-    const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, signer);
+    if (!tokenAddress)
+      throw new Error("Token address not found in chain configuration");
 
     const contractAddress =
       chainConfigs[chainId]?.contractAddress ||
       process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-    const parsedAmount = parseCNGNAmount(amount);
-    const tx = await tokenContract.approve(contractAddress, parsedAmount);
-    await tx.wait();
+    if (!contractAddress) throw new Error("Contract address not found");
 
-    return tx.hash;
+    const parsedAmount = parseCNGNAmount(amount);
+    const txHash = await walletClient.writeContract({
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [contractAddress, parsedAmount],
+      account: (await walletClient.getAddresses())[0],
+    });
+
+    return txHash;
   } catch (error) {
     console.error("Error approving tokens:", error);
-    throw new Error((error as { message: string }).message || "Failed to approve tokens");
-  }
-};
-
-// Burn tokens and initiate fiat transfer
-export const burnTokens = async (
-  amount: string,
-  chainId = 1
-): Promise<string> => {
-  try {
-    // Ensure wallet is on the correct network
-    await ensureCorrectNetwork(chainId);
-
-    const { signer } = await getProviderAndSigner();
-    const contractAddress =
-      chainConfigs[chainId]?.contractAddress ||
-      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-    if (!contractAddress) {
-      throw new Error("Contract address not found");
-    }
-  
-    const dexContract = new ethers.Contract(contractAddress, DEX_ABI, signer);
-
-    // Generate a unique offramp ID
-    const offRampId = ethers.randomBytes(32);
-
-    // Call your contract's function to burn tokens and initiate fiat transfer
-    const tx = await dexContract.withdraw(parseCNGNAmount(amount), offRampId);
-
-    await tx.wait();
-    return tx.hash;
-  } catch (error) {
-    console.error("Error burning tokens:", error);
-    throw new Error((error as { message: string }).message || "Failed to burn tokens");
+    throw new Error(
+      (error as { message: string }).message || "Failed to approve tokens"
+    );
   }
 };

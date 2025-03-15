@@ -1,3 +1,4 @@
+import type { Address } from "viem";
 import {
   mainnet,
   polygon,
@@ -11,8 +12,8 @@ import {
 export const chainConfigs: {
   [key: number]: {
     name: string;
-    tokenAddress: string;
-    contractAddress: string;
+    tokenAddress: Address;
+    contractAddress: Address;
     rpcUrl: string;
     chain: Chain;
   };

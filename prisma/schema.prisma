@@ -55,7 +55,7 @@ model Offramp {
   userAddress           String    @map("user_address")
   bankAccount           String    @map("bank_account")
   bankCode              String    @map("bank_code")
-  chainId               Int?      @map("chain_id")
+  chainId               Int       @map("chain_id")
   onChainTx             String?   @map("on_chain_tx")
   bankTransferReference String?   @unique @map("bank_transfer_reference")
   recipientId           String    @map("recipient_id")
@@ -74,7 +74,7 @@ model Bridge {
   amount             Int
   sourceChainId      Int       @map("source_chain_id")
   destinationChainId Int       @map("destination_chain_id")
-  sourceTxHash       Int       @map("source_tx_hash")
+  sourceTxHash       String?   @map("source_tx_hash")
   destinationTxHash  String?   @map("destination_tx_hash")
   status             Status    @default(pending)
   createdAt          DateTime  @default(now()) @map("created_at")

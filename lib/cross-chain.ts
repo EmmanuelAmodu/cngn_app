@@ -1,9 +1,9 @@
 import type { Hash } from "viem";
 import { chainConfigs } from "@/lib/constants";
 import { DEX_ABI } from "./abi/dex-abi";
-import { supabaseAdmin } from "./supabase";
 import Bull from "bull";
 import { getPublicClient, getWalletClient } from "./blockchain";
+import { prisma } from "./database";
 
 const REDIS_URL = process.env.REDIS_URL;
 if (!REDIS_URL) {
@@ -16,20 +16,15 @@ const bridgeQueue = new Bull("bridge_queue", {
 
 export async function crossChainPolling() {
   bridgeQueue.process(async (job) => {
-    const { bridge_id, user_address, amount, source_chain_id, destination_chain_id } = job.data;
-    await processBridgeFrom(bridge_id, user_address, BigInt(amount), source_chain_id, destination_chain_id);
+    const { bridgeId, userAddress, amount, sourceChainId, destinationChainId } = job.data;
+    await processBridgeFrom(bridgeId, userAddress, BigInt(amount), sourceChainId, destinationChainId);
   });
 
   while (true) {
-    const { data, error } = await supabaseAdmin
-      .from("bridges")
-      .select("*")
-      .eq("status", "pending")
-      .limit(100);
-
-    if (error) {
-      console.error("Error fetching pending bridges:", error);
-    }
+    const data = await prisma.bridge.findMany({
+      where: { status: 'pending' },
+      take: 100,
+    })
 
     if (!data) {
       console.log("No pending bridges found");
@@ -39,39 +34,38 @@ export async function crossChainPolling() {
 
     for (const bridge of data) {
       const {
-        bridge_id,
-        source_chain_id,
-        destination_chain_id,
+        bridgeId,
+        sourceChainId,
       } = bridge;
       try {
-        const publicClient = getPublicClient(source_chain_id);
+        const publicClient = getPublicClient(sourceChainId);
 
-        const [to, amount, destinationChainIdFromContract, bridgeId] = await publicClient.readContract({
-          address: chainConfigs[source_chain_id].contractAddress as `0x${string}`,
+        const [userAddress, amount, destinationChainIdFromContract, bridgeIdFromContract] = await publicClient.readContract({
+          address: chainConfigs[sourceChainId].contractAddress as `0x${string}`,
           abi: DEX_ABI,
           functionName: "bridgeEntryRecords",
           args: [
-            bridge_id as `0x${string}`,
+            bridgeId as `0x${string}`,
           ],
         });
 
         await bridgeQueue.add(
-          { bridge_id: bridgeId, user_address: to, amount, source_chain_id, destination_chain_id },
+          { bridgeId: bridgeIdFromContract, userAddress, amount, sourceChainId, destinationChainId: destinationChainIdFromContract },
           { delay: 5000 }
         );
 
-        await supabaseAdmin
-          .from("bridges")
-          .update({
+        await prisma.bridge.update({
+          where: { bridgeId: bridge.bridgeId },
+          data: {
             status: "queued",
-            amount: BigInt(amount),
-            user_address: to,
-            source_chain_id: source_chain_id,
-          })
-          .eq("bridge_id", bridge.bridge_id);
+            amount: Number(amount),
+            userAddress,
+            sourceChainId: sourceChainId,
+          }
+        })
   
       } catch (error) {
-        console.error(`Error processing bridge ${bridge_id}:`, error);
+        console.error(`Error processing bridge ${bridgeId}:`, error);
       }
     }
 
@@ -140,27 +134,22 @@ async function processBridgeFrom(
   destinationChainId: number
 ) {
   try {
-    // Update status to processing
-    const { data, error } = await supabaseAdmin
-      .from("bridges")
-      .select("*")
-      .eq("bridge_id", bridgeId)
-      .eq("status", "queued")
-      .single();
-
-    if (error) {
-      throw error;
-    }
+    const data = await prisma.bridge.findFirst({
+      where: {
+        bridgeId, 
+        status: "queued"
+      },
+    })
 
     if (!data) {
       console.log(`Bridge ${bridgeId} not found or already processed`);
       return;
     }
-  
-    await supabaseAdmin
-      .from("bridges")
-      .update({ status: "processing" })
-      .eq("bridge_id", bridgeId);
+
+    await prisma.bridge.update({
+      where: { bridgeId },
+      data: { status: "processing" }
+    })
 
     // Send cNGN on destination chain
     const result = await sendCNGNOnDestinationChain(
@@ -171,27 +160,23 @@ async function processBridgeFrom(
       bridgeId
     );
 
-    // Update bridge status to completed
-    await supabaseAdmin
-      .from("bridges")
-      .update({
+    await prisma.bridge.update({
+      where: { bridgeId },
+      data: {
         status: "completed",
-        destination_tx_hash: result.txHash,
-        processed: true,
-      })
-      .eq("bridge_id", bridgeId);
+        destinationTxHash: result.txHash,
+      }
+    })
 
     console.log(`Bridge ${bridgeId} processed successfully`);
   } catch (error) {
     console.error(`Error processing bridge ${bridgeId}:`, error);
 
-    // Update bridge status to failed
-    await supabaseAdmin
-      .from("bridges")
-      .update({
+    await prisma.bridge.update({
+      where: { bridgeId },
+      data: {
         status: "failed",
-        processed: true,
-      })
-      .eq("bridge_id", bridgeId);
+      }
+    })
   }
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
-import { supabaseAdmin } from "@/lib/supabase"
 import { randomBytes } from "crypto"
 import { createRecipient, verifyBankAccount } from "@/lib/paystack-client"
+import { prisma } from "@/lib/database"
 
 export async function POST(request: Request) {
   try {
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
     }
 
-    const offRampId = `0x${randomBytes(32).toString("hex")}`
+    const offrampId = `0x${randomBytes(32).toString("hex")}`
 
     const data = await verifyBankAccount(bankAccount, bankCode);
 
@@ -22,20 +22,17 @@ export async function POST(request: Request) {
       userAddress
     );
 
-    const { error, data: offramp } = await supabaseAdmin
-      .from("offramps")
-      .insert({
-        offramp_id: offRampId,
-        user_address: userAddress,
-        account_number: data.account_number,
-        account_name: data.account_name,
-        bank_code: bankCode,
-        chain_id: chainId,
-      })
-      .select()
-      .single()
-
-    if (error) throw error
+    const offramp = await prisma.offramp.create({
+      data: {
+        offrampId,
+        userAddress,
+        bankCode,
+        chainId,
+        bankAccount,
+        recipientId: recipient.recipient_code,
+        amount: 0,
+      }
+    });
 
     return NextResponse.json({
       success: true,

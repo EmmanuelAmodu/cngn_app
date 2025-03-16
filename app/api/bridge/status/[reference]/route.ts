@@ -1,22 +1,19 @@
 import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { prisma } from "@/lib/database"
 
-export async function GET(request: Request, { params }: { params: { reference: string } }) {
+export async function GET(request: Request, { params }: { params: { bridgeId: string } }) {
   try {
-    const { data: bridge, error } = await supabase.from("bridges").select("*").eq("id", params.reference).single()
-
-    if (error) throw error
+    const bridge = await prisma.bridge.findUnique({
+      where: {
+        bridgeId: params.bridgeId,
+      },
+    });
+  
     if (!bridge) {
       return NextResponse.json({ error: "Bridge not found" }, { status: 404 })
     }
 
-    return NextResponse.json({
-      sourceChain: "Ethereum",
-      destinationChain: getChainName(bridge.destination_chain_id),
-      status: bridge.status,
-      estimatedTime: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-      txHash: bridge.destination_tx_hash,
-    })
+    return NextResponse.json(bridge)
   } catch (error) {
     console.error("Error in bridge status check:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

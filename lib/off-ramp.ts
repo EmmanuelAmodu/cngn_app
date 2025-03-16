@@ -3,8 +3,8 @@ import { DEX_ABI } from "./abi/dex-abi";
 import { getPublicClient, getTokenAddress } from "./blockchain";
 import { chainConfigs } from "./constants";
 import { initiateTransfer } from "./paystack-client";
-import { supabaseAdmin } from "./supabase";
 import Bull from "bull";
+import { prisma } from "./database";
 
 const REDIS_URL = process.env.REDIS_URL;
 if (!REDIS_URL) {
@@ -22,15 +22,10 @@ export async function offRampPolling() {
   });
 
   while (true) {
-    const { data, error } = await supabaseAdmin
-      .from("offramp")
-      .select("*")
-      .eq("status", "pending")
-      .limit(100);
-
-    if (error) {
-      console.error("Error fetching pending off ramps:", error);
-    }
+    const data = await prisma.offramp.findMany({
+      where: { status: 'pending' },
+      take: 100
+    })
 
     if (!data) {
       console.log("No pending off ramps found");
@@ -40,29 +35,29 @@ export async function offRampPolling() {
 
     for (const offRamp of data) {
       const {
-        offramp_id,
-        chain_id,
+        offrampId,
+        chainId,
       } = offRamp;
       try {
-        const publicClient = getPublicClient(chain_id);
+        const publicClient = getPublicClient(chainId);
 
         const decimals = await publicClient.readContract({
-          address: getTokenAddress(chain_id),
+          address: getTokenAddress(chainId),
           functionName: 'decimals',
           abi: erc20Abi
         });
 
         const [amount, offRampId] = await publicClient.readContract({
-          address: chainConfigs[chain_id].contractAddress as `0x${string}`,
+          address: chainConfigs[chainId].contractAddress as `0x${string}`,
           abi: DEX_ABI,
           functionName: "offRampRecords",
           args: [
-            offramp_id as `0x${string}`,
+            offrampId as `0x${string}`,
           ],
         });
 
         if (Number(amount) === 0) {
-          console.log(`Offramp ${offramp_id} not found`);
+          console.log(`Offramp ${offrampId} not found`);
           continue;
         }
 
@@ -72,16 +67,16 @@ export async function offRampPolling() {
           { delay: 5000 }
         );
 
-        await supabaseAdmin
-          .from("offramp")
-          .update({
+        await prisma.offramp.update({
+          where: { offrampId },
+          data: {
             status: "queued",
             amount: amountInt,
-          })
-          .eq("offramp_id", offRamp.offramp_id);
+          }
+        })
   
       } catch (error) {
-        console.error(`Error processing bridge ${offramp_id}:`, error);
+        console.error(`Error processing bridge ${offrampId}:`, error);
       }
     }
 
@@ -90,26 +85,25 @@ export async function offRampPolling() {
 }
 
 export async function processWithdrawal(offrampId: string) {
-    const { data: offramp, error: offrampError } = await supabaseAdmin
-    .from("offramp")
-    .select("*")
-    .eq("offramp_id", offrampId)
-    .eq("status", "queued")
-    .single();
+  const offramp = await prisma.offramp.findFirst({
+    where: {
+      offrampId,
+      status: 'queued'
+    }
+  })
 
-  if (offrampError || !offramp) {
+  if (!offramp) {
     throw new Error("Failed to get offramp details");
   }
-  
+
   try {
-    // Update withdrawal status to completed
-    await supabaseAdmin
-    .from("offramp")
-    .update({
-      status: "processing",
+    await prisma.offramp.update({
+      where: { offrampId },
+      data: {
+        status: "processing",
+      }
     })
-    .eq("offramp_id", offrampId);
-    
+
     // Send NGN to bank account
     const transfer = await initiateTransfer(
       offramp.amount,
@@ -118,26 +112,23 @@ export async function processWithdrawal(offrampId: string) {
       "Payout from Pepper",
     );
 
-    // Update withdrawal status to completed
-    await supabaseAdmin
-      .from("offramp")
-      .update({
+    await prisma.offramp.update({
+      where: { offrampId },
+      data: {
         status: "completed",
-        bank_transfer_reference: transfer.reference,
-      })
-      .eq("offramp_id", offrampId);
+        bankTransferReference: transfer.reference,
+      }
+    })
 
     console.log(`Withdrawal ${offrampId} processed successfully`);
   } catch (error) {
     console.error(`Error processing withdrawal ${offrampId}:`, error);
 
-    // Update withdrawal status to failed
-    await supabaseAdmin
-      .from("offramp")
-      .update({
+    await prisma.offramp.update({
+      where: { offrampId },
+      data: {
         status: "failed",
-        processed: true,
-      })
-      .eq("offramp_id", offrampId);
+      }
+    })
   }
 }

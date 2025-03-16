@@ -1,28 +1,27 @@
 import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
 import { randomBytes } from "crypto"
+import { prisma } from "@/lib/database"
 
 export async function POST(request: Request) {
   try {
-    const { amount, sourceChain, destinationChain, userAddress, sourceChainId } = await request.json()
+    const { amount, destinationChain, userAddress, sourceChainId, sourceTxHash } = await request.json()
 
-    if (!amount || !sourceChain || !destinationChain || !userAddress) {
+    if (!amount || !sourceChainId || !destinationChain || !userAddress) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
     }
 
     // Generate a unique bridge ID as bytes32
     const bridgeId = `0x${randomBytes(32).toString("hex")}`
 
-    const { error } = await supabase.from("bridges").insert({
-      bridge_id: bridgeId,
-      user_address: userAddress,
-      amount: Number.parseInt(amount),
-      source_chain_id: sourceChainId || 1,
-      destination_chain_id: destinationChain,
-      status: "pending",
+    await prisma.bridge.create({
+      data: {
+        bridgeId,
+        userAddress,
+        amount: Number.parseInt(amount),
+        sourceChainId,
+        destinationChainId: destinationChain,
+      }
     })
-
-    if (error) throw error
 
     return NextResponse.json({
       success: true,
@@ -33,4 +32,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
-

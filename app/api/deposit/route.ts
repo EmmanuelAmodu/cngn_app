@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
 import {
   getWalletClient,
   getContractAddress,
@@ -12,6 +11,7 @@ import { erc20Abi, type Address, type Hex } from "viem";
 import Bull, { type Job } from "bull";
 import { randomBytes } from "crypto";
 import { getCustomerTransactions } from "@/lib/paystack-client";
+import { prisma } from "@/lib/database";
 
 const REDIS_URL = process.env.REDIS_URL;
 if (!REDIS_URL) {
@@ -57,41 +57,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
   }
 
-  const {  data: accountData, error: accountDataError } = await supabaseAdmin
-    .from("virtual_accounts")
-    .select("*")
-    .eq("user_address", userAddress)
-    .single();
+  const accountData = await prisma.virtualAccount.findFirst({
+    where: { userAddress },
+  });
 
-  if (accountDataError) {
-    console.error("Error fetching account data:", accountDataError);
+  if (!accountData) {
     return NextResponse.json(
-      { error: "Failed to fetch account data" },
-      { status: 500 }
+      { error: "User account not found" },
+      { status: 404 }
     );
   }
 
   await getUsersLatestTransaction(userAddress, Number(accountData.reference));
 
-  const { error: fetchError, data: deposits } = await supabaseAdmin
-    .from("onramps")
-    .select("*")
-    .eq("chain_id", chainId)
-    .eq("user_address", userAddress)
-
-  if (fetchError) {
-    console.error("Error fetching deposits:", fetchError);
-    return NextResponse.json(
-      { error: "Failed to fetch deposits" },
-      { status: 500 }
-    );
-  }
+  const onramps = await prisma.onramp.findMany({
+    where: { chainId, userAddress},
+  });
 
   await onrampQueue.add({ userAddress, chainId });
 
   return NextResponse.json({
     success: true,
-    data: deposits,
+    data: onramps,
   });
 }
 
@@ -101,30 +88,32 @@ async function processOffRamp(job: Job) {
   try {
     const { userAddress, chainId } = job.data;
 
-    console.log("Updating onramps in Supabase...");
-    const { error: fetchError, data: deposits } = await supabaseAdmin
-      .from("onramps")
-      .update({
-        status: "processing",
-        chain_id: Number(chainId),
-      })
-      .eq("user_address", userAddress)
-      .eq("status", "pending")
-      .select("*");
+    console.log("Updating onramps in database...");
+    const onramps = await prisma.onramp.findMany({
+      where: {
+        userAddress,
+        status: 'pending'
+      }
+    })
 
-    if (fetchError) {
-      console.error("Error fetching deposits:", fetchError);
-      throw fetchError;
-    }
+    await prisma.onramp.updateMany({
+      where: {
+        onrampId: { in: onramps.map(e => e.onrampId) }
+      },
+      data: {
+        status: "processing",
+        chainId: Number(chainId),
+      }
+    })
 
     console.log("onramps updated successfully");
 
-    for (let i = 0; i < deposits.length; i++) {
+    for (let i = 0; i < onramps.length; i++) {
       await commitOnChain(
         Number(chainId),
-        deposits[i].amount,
+        onramps[i].amount,
         userAddress as Hex,
-        deposits[i].onramp_id
+        onramps[i].onrampId as Hex
       );
     }
   } catch (error) {
@@ -185,24 +174,22 @@ async function commitOnChain(
     const receipt = await client.waitForTransactionReceipt({ hash: txHash });
     console.log("Transaction confirmed:", receipt);
 
-    // Update deposit status in Supabase
-    await supabaseAdmin
-      .from("onramps")
-      .update({
+    await prisma.onramp.update({
+      where: { onrampId },
+      data: {
         status: "completed",
-        on_chain_tx: txHash, // Store the transaction hash in the bank_payment_reference field
-      })
-      .eq("onramp_id", onrampId);
+        onChainTx: txHash,
+      }
+    });
   } catch (error) {
     console.error("Deposit transaction failed:", error);
 
-    // Update deposit status to failed
-    await supabaseAdmin
-      .from("onramps")
-      .update({
+    await prisma.onramp.update({
+      where: { onrampId },
+      data: {
         status: "failed",
-      })
-      .eq("onramp_id", onrampId);
+      }
+    });
 
     throw error;
   }
@@ -217,23 +204,19 @@ async function getUsersLatestTransaction(userAddress: string, customerId: number
       continue;
     }
 
-    const { data } = await supabaseAdmin
-      .from("onramps")
-      .select("onramp_id")
-      .eq("payment_reference", id)
-      .single();
-
-    if (data) continue;
-    const { error: createError } = await supabaseAdmin.from("onramps").insert({
-      onramp_id: `0x${randomBytes(32).toString("hex")}`,
-      payment_reference: id,
-      user_address: userAddress,
-      amount: amount / 100,
+    const data = await prisma.onramp.findFirst({
+      where: { paymentReference: id.toString() },
     });
 
-    if (createError) {
-      console.error("Error saving onramp:", createError);
-      throw createError;
-    }
+    if (data) continue;
+
+    await prisma.onramp.create({
+      data: {
+        onrampId: `0x${randomBytes(32).toString("hex")}`,
+        paymentReference: id.toString(),
+        userAddress,
+        amount: amount / 100,
+      }
+    });
   }
 }

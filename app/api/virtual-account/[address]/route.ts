@@ -1,29 +1,25 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
 import { createCustomer, createCustomerVirtualAccount } from "@/lib/paystack-client";
+import { prisma } from "@/lib/database";
 
 export async function GET(
   request: Request,
   { params }: { params: { address: string } }
 ) {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("virtual_accounts")
-      .select("*")
-      .eq("user_address", params.address)
+    const data = await prisma.virtualAccount.findFirst({
+      where: {
+        userAddress: params.address
+      }
+    })
 
-    if (error) {
-      console.error(error)
-      return NextResponse.json({ error: "API Error" }, { status: 500 });
-    }
-
-    if (data.length > 0) {
+    if (data) {
       return NextResponse.json({
         success: true,
-        accountNumber: data[0].account_number,
-        bankName: data[0].bank_name,
-        accountName: data[0].account_name,
-        reference: data[0].reference,
+        accountNumber: data.accountNumber,
+        bankName: data.bankName,
+        accountName: data.accountName,
+        reference: data.reference,
       });
     }
 
@@ -81,14 +77,11 @@ export async function POST(request: Request) {
       userAddress
     );
 
-    console.log("Saving to Supabase:", responseData);
+    console.log("Saving to Database:", responseData);
 
     return NextResponse.json({
       success: true,
-      accountNumber: responseData.account_number,
-      bankName: responseData.bank_name,
-      accountName: responseData.account_name,
-      reference: responseData.reference,
+      ...responseData
     });
   } catch (error) {
     console.error("Error in onramp initiate:", error);
@@ -109,11 +102,9 @@ async function getOrCreateAccount(
   mobileNumber: string,
   userAddress: string
 ) {
-  const { data: accountData, error } = await supabaseAdmin
-    .from("virtual_accounts")
-    .select("*")
-    .eq("user_address", userAddress)
-    .single();
+  const accountData = await prisma.virtualAccount.findFirst({
+    where: { userAddress }
+  })
 
   console.log('Account details from db:', accountData)
 
@@ -128,21 +119,15 @@ async function getOrCreateAccount(
 
   const responseData = await createCustomerVirtualAccount(createCustomerResponseData.id);
 
-  const {  data: creationAccountData, error: creatingError } = await supabaseAdmin
-    .from("virtual_accounts")
-    .upsert({
-      user_address: userAddress,
-      account_number: responseData.account_number,
-      bank_name: responseData.bank.name,
-      account_name: responseData.account_name,
+  const creationAccountData = await prisma.virtualAccount.create({
+    data: {
+      userAddress,
+      accountNumber: responseData.account_number,
+      bankName: responseData.bank.name,
+      accountName: responseData.account_name,
       reference: createCustomerResponseData.id.toString(),
-    }).select();
+    }
+  })
 
-  if (creatingError) {
-    console.error(creatingError)
-    throw new Error(creatingError.message)
-  }
-
-  return creationAccountData[0];
+  return creationAccountData;
 }
-

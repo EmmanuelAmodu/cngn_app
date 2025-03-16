@@ -119,8 +119,7 @@ export const approveTokenSpend = async (
       throw new Error("Token address not found in chain configuration");
 
     const contractAddress =
-      chainConfigs[chainId]?.contractAddress ||
-      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+      chainConfigs[chainId]?.contractAddress
     if (!contractAddress) throw new Error("Contract address not found");
 
     const parsedAmount = parseCNGNAmount(amount);
@@ -150,8 +149,7 @@ export const offRampToken = async (
   try {
     const walletClient = await getWalletClient(chainId);
     const contractAddress =
-      chainConfigs[chainId]?.contractAddress ||
-      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+      chainConfigs[chainId]?.contractAddress
     if (!contractAddress) throw new Error("Contract address not found");
 
     const parsedAmount = parseCNGNAmount(amount);
@@ -183,8 +181,7 @@ export const bridgeToken = async (
 
     const walletClient = await getWalletClient(sourceChainId);
     const contractAddress =
-      chainConfigs[sourceChainId]?.contractAddress ||
-      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+      chainConfigs[sourceChainId]?.contractAddress
     if (!contractAddress) throw new Error("Contract address not found");
 
     // Generate a unique bridge ID using Web Crypto API
@@ -222,8 +219,7 @@ export const approveTokens = async (
       throw new Error("Token address not found in chain configuration");
 
     const contractAddress =
-      chainConfigs[chainId]?.contractAddress ||
-      process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+      chainConfigs[chainId]?.contractAddress
     if (!contractAddress) throw new Error("Contract address not found");
 
     const parsedAmount = parseCNGNAmount(amount);

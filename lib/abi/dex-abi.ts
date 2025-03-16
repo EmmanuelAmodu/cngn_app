@@ -44,9 +44,14 @@ export const DEX_ABI = [
   },
   {
     type: "function",
-    name: "bridgeEntryIds",
+    name: "bridgeEntryRecords",
     inputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    outputs: [
+      { name: "to", type: "address", internalType: "address" },
+      { name: "amount", type: "uint256", internalType: "uint256" },
+      { name: "destinationChainId", type: "uint8", internalType: "uint8" },
+      { name: "bridgeId", type: "bytes32", internalType: "bytes32" },
+    ],
     stateMutability: "view",
   },
   {
@@ -63,9 +68,14 @@ export const DEX_ABI = [
   },
   {
     type: "function",
-    name: "bridgeExitIds",
+    name: "bridgeExitRecords",
     inputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    outputs: [
+      { name: "to", type: "address", internalType: "address" },
+      { name: "amount", type: "uint256", internalType: "uint256" },
+      { name: "sourceChainId", type: "uint8", internalType: "uint8" },
+      { name: "bridgeId", type: "bytes32", internalType: "bytes32" },
+    ],
     stateMutability: "view",
   },
   {
@@ -103,9 +113,12 @@ export const DEX_ABI = [
   },
   {
     type: "function",
-    name: "offRampIds",
+    name: "offRampRecords",
     inputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    outputs: [
+      { name: "amount", type: "uint256", internalType: "uint256" },
+      { name: "offRampId", type: "bytes32", internalType: "bytes32" },
+    ],
     stateMutability: "view",
   },
   {
@@ -121,9 +134,13 @@ export const DEX_ABI = [
   },
   {
     type: "function",
-    name: "onRampIds",
+    name: "onRampRecords",
     inputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    outputs: [
+      { name: "to", type: "address", internalType: "address" },
+      { name: "amount", type: "uint256", internalType: "uint256" },
+      { name: "onrampId", type: "bytes32", internalType: "bytes32" },
+    ],
     stateMutability: "view",
   },
   {
@@ -204,7 +221,7 @@ export const DEX_ABI = [
       {
         name: "bridgeId",
         type: "bytes32",
-        indexed: false,
+        indexed: true,
         internalType: "bytes32",
       },
     ],
@@ -230,7 +247,7 @@ export const DEX_ABI = [
       {
         name: "bridgeId",
         type: "bytes32",
-        indexed: false,
+        indexed: true,
         internalType: "bytes32",
       },
     ],
@@ -250,7 +267,7 @@ export const DEX_ABI = [
       {
         name: "offRampId",
         type: "bytes32",
-        indexed: false,
+        indexed: true,
         internalType: "bytes32",
       },
     ],
@@ -270,7 +287,7 @@ export const DEX_ABI = [
       {
         name: "onrampId",
         type: "bytes32",
-        indexed: false,
+        indexed: true,
         internalType: "bytes32",
       },
     ],

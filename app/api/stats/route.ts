@@ -43,18 +43,18 @@ export async function GET() {
     const totalTransactions = depositCount + withdrawalCount + bridgeCount
 
     return NextResponse.json({
-      onrampVolume: onrampVolume.toString(),
-      offrampVolume: offrampVolume.toString(),
-      bridgeVolume: bridgeVolume.toString(),
+      onrampVolume,
+      offrampVolume,
+      bridgeVolume,
       totalTransactions,
     })
   } catch (error) {
     console.error("Error getting transaction stats:", error)
     // Return default values instead of an error response
     return NextResponse.json({
-      onrampVolume: "0",
-      offrampVolume: "0",
-      bridgeVolume: "0",
+      onrampVolume: 0,
+      offrampVolume: 0,
+      bridgeVolume: 0,
       totalTransactions: 0,
     })
   }

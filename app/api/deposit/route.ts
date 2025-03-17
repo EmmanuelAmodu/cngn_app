@@ -7,7 +7,7 @@ import {
   getPublicClient,
   getTokenAddress,
 } from "@/lib/blockchain";
-import { erc20Abi, type Address, type Hex } from "viem";
+import { erc20Abi, Transaction, TransactionReceipt, type Address, type Hex } from "viem";
 import Bull, { type Job } from "bull";
 import { randomBytes } from "crypto";
 import { getCustomerTransactions } from "@/lib/paystack-client";
@@ -129,36 +129,37 @@ async function commitOnChain(
   userAddress: Address,
   onrampId: Hex
 ) {
+  const walletClient = getWalletClient(chainId);
+  const publicClient = getPublicClient(chainId);
+
+  console.log(`Executing deposit transaction on chain ${chainId}...`);
+
+  const decimals = await publicClient.readContract({
+    address: getTokenAddress(Number(chainId)),
+    functionName: 'decimals',
+    abi: erc20Abi
+  });
+
+  // Convert amount to BigInt with proper decimal places (18 decimals for ERC20)
+  const amountMinusFees = amount - 50;
+  const amountInWei = BigInt(amountMinusFees * 10 ** decimals);
+
+  if (!walletClient.account) {
+    throw new Error("Wallet client account not initialized");
+  }
+
+  if (amountInWei <= 0) {
+    throw new Error("Invalid amount");
+  }
+
+  // Get the chain for the specified chainId
+  const chain = getChain(Number(chainId) || 1);
+
+  let txHash: Hex;
+  let receipt: TransactionReceipt;
   try {
-    // Get wallet client for the specified chain
-    const walletClient = getWalletClient(chainId);
-    const publicClient = getPublicClient(chainId);
-
-    console.log(`Executing deposit transaction on chain ${chainId}...`);
-
-    const decimals = await publicClient.readContract({
-      address: getTokenAddress(Number(chainId)),
-      functionName: 'decimals',
-      abi: erc20Abi
-    });
-
-    // Convert amount to BigInt with proper decimal places (18 decimals for ERC20)
-    const amountMinusFees = amount - 50;
-    const amountInWei = BigInt(amountMinusFees * 10 ** decimals);
-
-    if (!walletClient.account) {
-      throw new Error("Wallet client account not initialized");
-    }
-
-    if (amountInWei <= 0) {
-      throw new Error("Invalid amount");
-    }
-
-    // Get the chain for the specified chainId
-    const chain = getChain(Number(chainId) || 1);
-
     // Execute deposit transaction
-    const txHash = await walletClient.writeContract({
+    txHash = await walletClient.writeContract({
       address: getContractAddress(Number(chainId)),
       abi: contractABI,
       account: walletClient.account,
@@ -172,9 +173,14 @@ async function commitOnChain(
     // Get the public client for the specified chain
     const client = getPublicClient(Number(chainId));
 
-    const receipt = await client.waitForTransactionReceipt({ hash: txHash });
+    receipt = await client.waitForTransactionReceipt({ hash: txHash });
     console.log("Transaction confirmed:", receipt);
+  } catch (error) {
+    console.error("Deposit transaction failed:", error);
+    throw error;
+  }
 
+  if (txHash && receipt) {
     await prisma.onramp.update({
       where: { onrampId },
       data: {
@@ -182,17 +188,6 @@ async function commitOnChain(
         onChainTx: txHash,
       }
     });
-  } catch (error) {
-    console.error("Deposit transaction failed:", error);
-
-    await prisma.onramp.update({
-      where: { onrampId },
-      data: {
-        status: "failed",
-      }
-    });
-
-    throw error;
   }
 }
 

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle2, AlertCircle, Loader2, Copy } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Copy, CreditCardIcon } from "lucide-react";
 import { Steps, Step } from "@/components/ui/steps";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -20,6 +20,7 @@ import TransactionsTable, {
 	type TransactionTableData,
 } from "./transactions-table";
 import { useInterval } from "react-interval-hook";
+import { usePolling } from "@/hooks/use-polling";
 
 interface OnrampFormProps {
 	address: string | undefined;
@@ -237,7 +238,6 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 				chainId || 1,
 			);
 			setOnRampTransactions(response.data);
-			setSuccess("Deposit confirmed! Your tokens will be minted shortly.");
 		} catch (err) {
 			setError(
 				(err as { message: string }).message ||
@@ -248,21 +248,10 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 		}
 	};
 
-	useInterval(
-		() => {
-			console.log("Callback every 10000 ms");
-			handleConfirmDeposit();
-		},
-		10000,
-		{
-			autoStart: true,
-			immediate: true,
-			selfCorrecting: true,
-			onFinish: () => {
-				console.log("Callback when timer is stopped");
-			},
-		},
-	);
+  usePolling(() => {
+    console.log("Polling for new transactions...");
+    handleConfirmDeposit();
+  }, 10000, { immediate: true });
 
 	if (!address) {
 		return (
@@ -277,12 +266,6 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 
 	return (
 		<div className="space-y-6 py-4">
-			{/* <Steps currentStep={currentStep} className="mb-8">
-        <Step title="Enter Details" description="Amount and personal information" completed={currentStep >= 0} />
-        <Step title="Get Account" description="Receive virtual account details" completed={currentStep >= 1} />
-        <Step title="Make Payment" description="Transfer funds" completed={currentStep >= 2} />
-      </Steps> */}
-
 			<div className="space-y-6">
 				{currentStep === 0 && (
 					<Card>
@@ -350,67 +333,56 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 
 				{currentStep === 1 && virtualAccount && (
 					<div>
-						<Card>
-							<CardContent className="pt-6 space-y-4">
-								<div className="space-y-1">
-									<Label className="text-sm text-muted-foreground">
-										Bank Name
-									</Label>
-									<div className="flex items-center justify-between">
-										<span className="font-medium">
-											{virtualAccount.bankName}
-										</span>
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={() => copyToClipboard(virtualAccount.bankName)}
-										>
-											<Copy className="h-4 w-4" />
-										</Button>
-									</div>
-								</div>
-
-								<div className="space-y-1">
-									<Label className="text-sm text-muted-foreground">
-										Account Number
-									</Label>
-									<div className="flex items-center justify-between">
-										<span className="font-medium">
-											{virtualAccount.accountNumber}
-										</span>
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={() =>
-												copyToClipboard(virtualAccount.accountNumber)
-											}
-										>
-											<Copy className="h-4 w-4" />
-										</Button>
-									</div>
-								</div>
-
-								<div className="space-y-1">
-									<Label className="text-sm text-muted-foreground">
-										Account Name
-									</Label>
-									<div className="flex items-center justify-between">
-										<span className="font-medium">
-											{virtualAccount.accountName}
-										</span>
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={() =>
-												copyToClipboard(virtualAccount.accountName)
-											}
-										>
-											<Copy className="h-4 w-4" />
-										</Button>
-									</div>
-								</div>
-							</CardContent>
-						</Card>
+            <Card className="bg-gradient-to-r border shadow-sm m-4">
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                      <CreditCardIcon className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Account for deposits</p>
+                      <p className="text-lg font-bold">
+                        {virtualAccount.accountNumber}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(virtualAccount.accountNumber)}
+                        >
+                          <Copy className="h-4 w-4" />
+										    </Button>
+                      </p>
+                    </div>
+                  </div>
+                    <div>
+                      <p className="text-muted-foreground">Bank</p>
+                      <p className="font-medium">
+                        {virtualAccount.bankName}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(virtualAccount.bankName)}
+                        >
+                          <Copy className="h-4 w-4" />
+										    </Button>
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Account Name</p>
+                      <p className="font-medium">
+                        {virtualAccount.accountName}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(virtualAccount.accountName)}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </p>
+                    </div>
+                </div>
+              </CardContent>
+            </Card>
 
 						<TransactionsTable
 							transactions={onRampTransactions}
@@ -423,13 +395,6 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 					<Alert variant="destructive">
 						<AlertCircle className="h-4 w-4" />
 						<AlertDescription>{error}</AlertDescription>
-					</Alert>
-				)}
-
-				{success && !error && currentStep < 2 && (
-					<Alert className="bg-green-50 text-green-800 border-green-200">
-						<CheckCircle2 className="h-4 w-4" />
-						<AlertDescription>{success}</AlertDescription>
 					</Alert>
 				)}
 			</div>

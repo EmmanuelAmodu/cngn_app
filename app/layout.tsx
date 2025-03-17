@@ -1,8 +1,9 @@
 import type React from "react";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { crossChainPolling } from "@/lib/cross-chain";
+import { offRampPolling } from "@/lib/off-ramp";
 import "./globals.css";
-import { startEventListeners } from "@/lib/event-listener";
 import { Providers } from "@/components/Providers"; // adjust the path as needed
 
 const inter = Inter({ subsets: ["latin"] });
@@ -17,7 +18,8 @@ export const metadata: Metadata = {
 if (process.env.ADMIN_PRIVATE_KEY) {
   try {
     console.log("Initializing blockchain services...");
-    startEventListeners();
+    crossChainPolling();
+    offRampPolling();
     console.log("Blockchain services initialized successfully");
   } catch (error) {
     console.error("Error initializing blockchain services:", error);
@@ -33,5 +35,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-
-import './globals.css'

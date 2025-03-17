@@ -16,10 +16,7 @@ export async function GET(
     if (data) {
       return NextResponse.json({
         success: true,
-        accountNumber: data.accountNumber,
-        bankName: data.bankName,
-        accountName: data.accountName,
-        reference: data.reference,
+        data
       });
     }
 
@@ -81,7 +78,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      ...responseData
+      data: responseData
     });
   } catch (error) {
     console.error("Error in onramp initiate:", error);

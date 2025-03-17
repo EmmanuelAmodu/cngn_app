@@ -93,34 +93,29 @@ export const generateVirtualAccountAPI = async (data: VirtualAccountRequest): Pr
       body: JSON.stringify(data),
     })
 
-    const responseText = await response.text()
     console.log(`API response status: ${response.status}`)
 
-    let responseData: {
-      success: boolean
-      accountNumber: string
-      bankName: string
-      accountName: string
-      reference: string
-      error?: string
-      details?: string
-    }
-  
-    try {
-      responseData = JSON.parse(responseText)
-    } catch (e) {
-      console.error("Failed to parse API response:", responseText)
-      throw new Error(`Server error: Failed to generate virtual account. Response: ${responseText}`)
+    if (!response.ok) {
+      const responseText = await response.text()
+      console.error("API error:", responseText)
+      throw new Error(responseText || "Failed to generate virtual account")
     }
 
-    if (!response.ok) {
-      console.error("API error:", responseData)
-      throw new Error(responseData.error || responseData.details || "Failed to generate virtual account")
-    }
+    const responseData: {
+      success: boolean
+      data: {
+        accountNumber: string
+        bankName: string
+        accountName: string
+        reference: string
+        error?: string
+        details?: string
+      }
+    } = await response.json();
 
     if (!responseData.success) {
       console.error("API returned failure:", responseData)
-      throw new Error(responseData.error || "Failed to generate virtual account")
+      throw new Error("Failed to generate virtual account")
     }
 
     console.log("Virtual account generated successfully:", responseData)
@@ -129,10 +124,10 @@ export const generateVirtualAccountAPI = async (data: VirtualAccountRequest): Pr
       status: true,
       message: "Virtual account generated successfully",
       data: {
-        accountNumber: responseData.accountNumber,
-        bankName: responseData.bankName,
-        accountName: responseData.accountName,
-        reference: responseData.reference,
+        accountNumber: responseData.data.accountNumber,
+        bankName: responseData.data.bankName,
+        accountName: responseData.data.accountName,
+        reference: responseData.data.reference,
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
       },
     }
@@ -154,7 +149,7 @@ export const fetchVirtualAccountAPI = async (userAddress: string) => {
     // console.log(response.test())
     if (response.ok) {
       const account = await response.json()
-      return account
+      return account.data
     }
   } catch (error) {
     console.error("Error fetching virtual account:", error)

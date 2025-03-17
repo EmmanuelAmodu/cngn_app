@@ -42,6 +42,11 @@ export async function offRampPolling() {
         chainId,
       } = transaction;
       try {
+        if (!chainId) {
+          console.error(`Chain ID missing for transaction ${id}`);
+          continue;
+        }
+
         const publicClient = getPublicClient(chainId);
 
         const decimals = await publicClient.readContract({
@@ -98,6 +103,10 @@ export async function processWithdrawal(transactionId: string) {
 
   if (!transaction) {
     throw new Error("Failed to get offramp details");
+  }
+
+  if (!transaction.recipientId) {
+    throw new Error("Recipient ID missing for withdrawal");
   }
 
   try {

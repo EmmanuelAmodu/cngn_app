@@ -41,6 +41,11 @@ export async function crossChainPolling() {
         sourceChainId,
       } = transaction;
       try {
+        if (!sourceChainId) {
+          console.error(`Source chain ID missing for transaction ${id}`);
+          continue;
+        }
+
         const publicClient = getPublicClient(sourceChainId);
 
         const [userAddress, amount, destinationChainIdFromContract, transactionIdFromContract] = await publicClient.readContract({

@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -239,6 +239,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 			);
 			setOnRampTransactions(response.data);
 		} catch (err) {
+			console.error("Deposit confirmation error:", err);
 			setError(
 				(err as { message: string }).message ||
 					"Failed to confirm deposit. Please ensure you have made the transfer and try again.",
@@ -251,7 +252,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
   usePolling(() => {
     console.log("Polling for new transactions...");
     handleConfirmDeposit();
-  }, 10000, { immediate: true });
+  }, 10000, { immediate: true, start: !!virtualAccount });
 
 	if (!address) {
 		return (

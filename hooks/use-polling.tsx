@@ -1,9 +1,12 @@
 import { useEffect } from 'react';
 
-export function usePolling(fn: () => void, interval: number, option?: { immediate: boolean }) {
+export function usePolling(fn: () => void, interval: number, option: { immediate: boolean, start: boolean }) {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
-    if (option?.immediate) fn();
+    if (!option.start) return;
+
+    if (option.immediate) fn();
     const id = setInterval(fn, interval);
     return () => clearInterval(id);
-  }, [fn, interval, option]);
+  }, [interval, option.immediate, option.start]);
 }

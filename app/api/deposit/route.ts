@@ -177,6 +177,12 @@ async function commitOnChain(
     console.log("Transaction confirmed:", receipt);
   } catch (error) {
     console.error("Deposit transaction failed:", error);
+    await prisma.onramp.update({
+      where: { onrampId },
+      data: {
+        status: "pending",
+      }
+    });
     throw error;
   }
 

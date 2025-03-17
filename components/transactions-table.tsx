@@ -69,6 +69,20 @@ export default function TransactionsTable({transactions, copyToClipboard}: Trans
             Export
           </Button>
         </div> */}
+        <div className="px-6 py-3 bg-muted/20 border-y">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+              <p className="text-sm font-medium">Account for deposits</p>
+              <p className="text-lg font-bold">accountNumber</p>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <p>
+                accountName • bankName
+              </p>
+              <p>Routing: routingNumber</p>
+            </div>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">

@@ -22,14 +22,18 @@ const onrampQueue = new Bull("onramp_queue", {
   redis: REDIS_URL,
 });
 
-export async function GET(request: Request, { params }: { params: { userAddress: string, chainId: number } }) {
+export async function GET(request: Request) {
   // Validate all required fields
-  if (!params?.chainId || !params?.userAddress) {
+  const { searchParams } = new URL(request.url);
+  const userAddress = searchParams.get("userAddress");
+  const chainId = Number(searchParams.get("chainId"));
+
+  if (!chainId || !userAddress) {
     return NextResponse.json(
       {
         error: `Missing required fields: ${[
-          !params?.userAddress && "userAddress",
-          !params?.chainId && "chainId",
+          !userAddress && "userAddress",
+          !chainId && "chainId",
         ]
           .filter(Boolean)
           .join(", ")}`,
@@ -39,24 +43,23 @@ export async function GET(request: Request, { params }: { params: { userAddress:
   }
 
   // Validate address format
-  if (typeof params.userAddress !== "string" || !params.userAddress.startsWith("0x")) {
+  if (typeof userAddress !== "string" || !userAddress.startsWith("0x")) {
     return NextResponse.json(
       { error: "Invalid wallet address format" },
       { status: 400 }
     );
   }
 
-  params.chainId = Number(params.chainId);
   // Validate amount
   if (
-    Number.isNaN(params.chainId) ||
-    params.chainId <= 0
+    Number.isNaN(chainId) ||
+    chainId <= 0
   ) {
     return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
   }
 
   const accountData = await prisma.virtualAccount.findFirst({
-    where: { userAddress: params.userAddress },
+    where: { userAddress: userAddress },
   });
 
   if (!accountData) {
@@ -67,13 +70,13 @@ export async function GET(request: Request, { params }: { params: { userAddress:
   }
 
   console.log("Fetching user's latest transaction...", accountData);
-  await getUsersLatestTransaction(params.userAddress, accountData.reference);
+  await getUsersLatestTransaction(userAddress, accountData.reference);
 
   const onramps = await prisma.onramp.findMany({
-    where: params,
+    where: { userAddress, chainId },
   });
 
-  await onrampQueue.add(params);
+  await onrampQueue.add({ userAddress, chainId });
 
   return NextResponse.json({
     success: true,

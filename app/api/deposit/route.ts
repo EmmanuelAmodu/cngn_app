@@ -70,10 +70,10 @@ export async function GET(request: Request, { params }: { params: { userAddress:
   await getUsersLatestTransaction(params.userAddress, accountData.reference);
 
   const onramps = await prisma.onramp.findMany({
-    where: { chainId: params.chainId, userAddress: params.userAddress },
+    where: params,
   });
 
-  await onrampQueue.add({ userAddress: params.userAddress, chainId: params.chainId });
+  await onrampQueue.add(params);
 
   return NextResponse.json({
     success: true,

@@ -24,12 +24,12 @@ const onrampQueue = new Bull("onramp_queue", {
 
 export async function GET(request: Request, { params }: { params: { userAddress: string, chainId: number } }) {
   // Validate all required fields
-  if (!params.chainId || !params.userAddress) {
+  if (!params?.chainId || !params?.userAddress) {
     return NextResponse.json(
       {
         error: `Missing required fields: ${[
-          !params.userAddress && "userAddress",
-          !params.chainId && "chainId",
+          !params?.userAddress && "userAddress",
+          !params?.chainId && "chainId",
         ]
           .filter(Boolean)
           .join(", ")}`,

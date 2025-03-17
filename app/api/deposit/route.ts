@@ -22,17 +22,14 @@ const onrampQueue = new Bull("onramp_queue", {
   redis: REDIS_URL,
 });
 
-export async function POST(request: Request) {
-  const body = await request.json();
-  const { userAddress, chainId } = body;
-
+export async function GET(request: Request, { params }: { params: { userAddress: string, chainId: number } }) {
   // Validate all required fields
-  if (!chainId || !userAddress) {
+  if (!params.chainId || !params.userAddress) {
     return NextResponse.json(
       {
         error: `Missing required fields: ${[
-          !userAddress && "userAddress",
-          !chainId && "chainId",
+          !params.userAddress && "userAddress",
+          !params.chainId && "chainId",
         ]
           .filter(Boolean)
           .join(", ")}`,
@@ -42,23 +39,24 @@ export async function POST(request: Request) {
   }
 
   // Validate address format
-  if (typeof userAddress !== "string" || !userAddress.startsWith("0x")) {
+  if (typeof params.userAddress !== "string" || !params.userAddress.startsWith("0x")) {
     return NextResponse.json(
       { error: "Invalid wallet address format" },
       { status: 400 }
     );
   }
 
+  params.chainId = Number(params.chainId);
   // Validate amount
   if (
-    Number.isNaN(Number(chainId)) ||
-    Number(chainId) <= 0
+    Number.isNaN(params.chainId) ||
+    params.chainId <= 0
   ) {
     return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
   }
 
   const accountData = await prisma.virtualAccount.findFirst({
-    where: { userAddress },
+    where: { userAddress: params.userAddress },
   });
 
   if (!accountData) {
@@ -69,13 +67,13 @@ export async function POST(request: Request) {
   }
 
   console.log("Fetching user's latest transaction...", accountData);
-  await getUsersLatestTransaction(userAddress, accountData.reference);
+  await getUsersLatestTransaction(params.userAddress, accountData.reference);
 
   const onramps = await prisma.onramp.findMany({
-    where: { chainId, userAddress},
+    where: { chainId: params.chainId, userAddress: params.userAddress },
   });
 
-  await onrampQueue.add({ userAddress, chainId });
+  await onrampQueue.add({ userAddress: params.userAddress, chainId: params.chainId });
 
   return NextResponse.json({
     success: true,

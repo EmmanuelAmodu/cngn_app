@@ -12,7 +12,7 @@ import { Steps, Step } from "@/components/ui/steps";
 import { Card, CardContent } from "@/components/ui/card";
 import {
 	generateVirtualAccountAPI,
-	confirmDepositAPI,
+	fetchDepositAPI,
 	fetchVirtualAccountAPI,
 } from "@/lib/api";
 import { chainConfigs } from "@/lib/constants";
@@ -233,7 +233,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 		setIsLoading(true);
 
 		try {
-			const response = await confirmDepositAPI(
+			const response = await fetchDepositAPI(
 				virtualAccount.reference,
 				chainId || 1,
 			);

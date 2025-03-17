@@ -158,30 +158,28 @@ export const fetchVirtualAccountAPI = async (userAddress: string) => {
 }
 
 // Confirm deposit for onramp
-export const confirmDepositAPI = async (
-  reference: string,
-  chainId = 1,
+export const fetchDepositAPI = async (
+  chainId: number,
+  userAddress: string,
 ): Promise<{
   status: boolean
   message: string
   data: []
 }> => {
+  const params = new URLSearchParams({
+    chainId: chainId.toString(),
+    userAddress,
+  });
+
   try {
-    if (!window.ethereum?.selectedAddress) {
+    if (userAddress) {
       throw new Error("No wallet address found")
     }
 
-    const response = await fetch("/api/deposit", {
-      method: "POST",
+    const response = await fetch(`/api/deposit?${params}`, {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        bankReference: reference,
-        userAddress: window.ethereum.selectedAddress,
-        onrampId: reference,
-        chainId,
-      }),
     })
 
     if (!response.ok) {

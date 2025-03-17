@@ -140,6 +140,8 @@ async function commitOnChain(
     abi: erc20Abi
   });
 
+  const contractAddress = getContractAddress(Number(chainId));
+
   // Convert amount to BigInt with proper decimal places (18 decimals for ERC20)
   const amountMinusFees = amount - 50;
   const amountInWei = BigInt(amountMinusFees * 10 ** decimals);
@@ -158,6 +160,17 @@ async function commitOnChain(
   let txHash: Hex;
   let receipt: TransactionReceipt;
   try {
+    const balance = await publicClient.readContract({
+      address: getTokenAddress(Number(chainId)),
+      functionName: 'balanceOf',
+      abi: erc20Abi,
+      args: [contractAddress],
+    })
+
+    if (balance < amountInWei) {
+      throw new Error("Insufficient balance in contract");
+    }
+
     // Execute deposit transaction
     txHash = await walletClient.writeContract({
       address: getContractAddress(Number(chainId)),

@@ -347,18 +347,17 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 
 				{currentStep === 1 && virtualAccount && (
 					<div>
-						<Card className="bg-gradient-to-r border shadow-sm m-4">
+						<Card className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 border shadow-sm my-4">
 							<CardContent className="p-4">
 								<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 									<div className="flex items-center gap-3">
-										<div className="bg-primary/10 p-2 rounded-full">
+										<div className="bg-primary/10 dark:bg-primary/20 p-2 rounded-full">
 											<CreditCardIcon className="h-5 w-5 text-primary" />
 										</div>
 										<div>
-											<p className="text-sm text-muted-foreground">
-												Account for deposits
-											</p>
-											<p className="text-lg font-bold">
+											<p className="text-sm text-muted-foreground">Account Info</p>
+											<p className="text-lg font-bold">{virtualAccount.accountName}</p>
+											<p className="text-sm font-medium">
 												{virtualAccount.accountNumber}
 												<Button
 													variant="ghost"
@@ -372,33 +371,19 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 											</p>
 										</div>
 									</div>
-									<div>
-										<p className="text-muted-foreground">Bank</p>
-										<p className="font-medium">
-											{virtualAccount.bankName}
-											<Button
-												variant="ghost"
-												size="sm"
-												onClick={() => copyToClipboard(virtualAccount.bankName)}
-											>
-												<Copy className="h-4 w-4" />
-											</Button>
-										</p>
-									</div>
-									<div>
-										<p className="text-muted-foreground">Account Name</p>
-										<p className="font-medium">
-											{virtualAccount.accountName}
-											<Button
-												variant="ghost"
-												size="sm"
-												onClick={() =>
-													copyToClipboard(virtualAccount.accountName)
-												}
-											>
-												<Copy className="h-4 w-4" />
-											</Button>
-										</p>
+									<div className="flex flex-col sm:flex-row gap-4 sm:gap-6 text-sm">
+										<div>
+											<p className="text-muted-foreground">Bank</p>
+											<p className="font-medium">{virtualAccount.bankName}</p>
+										</div>
+										<div>
+											<p className="text-muted-foreground">Routing</p>
+											<p className="font-medium">N/A</p>
+										</div>
+										<div>
+											<p className="text-muted-foreground">Wallet Balance</p>
+											<p className="font-medium text-primary">₦10000</p>
+										</div>
 									</div>
 								</div>
 							</CardContent>

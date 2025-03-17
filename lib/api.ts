@@ -172,8 +172,12 @@ export const fetchDepositAPI = async (
   });
 
   try {
-    if (userAddress) {
+    if (!userAddress) {
       throw new Error("No wallet address found")
+    }
+
+    if (!chainId) {
+      throw new Error("No chain ID found")
     }
 
     const response = await fetch(`/api/deposit?${params}`, {

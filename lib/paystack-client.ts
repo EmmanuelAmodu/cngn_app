@@ -159,7 +159,7 @@ export async function getCustomerTransactions(customerId?: string) {
   params.append("status", "success");
 
   try {
-    const url = `https://api.paystack.co/transaction?customer=${params.toString()}`;
+    const url = `https://api.paystack.co/transaction?${params.toString()}`;
     const options = {
       method: "GET",
       headers: {

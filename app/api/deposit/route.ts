@@ -68,7 +68,8 @@ export async function POST(request: Request) {
     );
   }
 
-  await getUsersLatestTransaction(userAddress, Number(accountData.reference));
+  console.log("Fetching user's latest transaction...", accountData);
+  await getUsersLatestTransaction(userAddress, accountData.reference);
 
   const onramps = await prisma.onramp.findMany({
     where: { chainId, userAddress},
@@ -195,9 +196,10 @@ async function commitOnChain(
   }
 }
 
-async function getUsersLatestTransaction(userAddress: string, customerId: number) {
+async function getUsersLatestTransaction(userAddress: string, customerId: string) {
   const response = await getCustomerTransactions(customerId);
 
+  console.log('User transactions', userAddress, customerId, response)
   for (const transaction of response) {
     const { status, amount, id } = transaction;
     if (status !== "success") {

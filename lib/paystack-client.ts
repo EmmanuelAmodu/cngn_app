@@ -153,7 +153,7 @@ export async function getBankList() {
   }
 }
 
-export async function getCustomerTransactions(customerId?: number) {
+export async function getCustomerTransactions(customerId?: string) {
   const params = new URLSearchParams({});
   if (customerId) params.append("customer", customerId.toString());
   params.append("status", "success");

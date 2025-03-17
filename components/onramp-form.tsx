@@ -28,6 +28,8 @@ import TransactionsTable, {
 import { useInterval } from "react-interval-hook";
 import { usePolling } from "@/hooks/use-polling";
 import { useAccount } from "wagmi";
+import { getPublicClient } from "@/lib/blockchain";
+import { Address, erc20Abi } from "viem";
 
 interface OnrampFormProps {
 	address: string | undefined;
@@ -53,6 +55,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<string | null>(null);
+	const [balance, setBalance] = useState<number>(0);
 	const [virtualAccount, setVirtualAccount] = useState<VirtualAccount | null>(
 		null,
 	);
@@ -267,6 +270,30 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 		},
 	);
 
+	const getBalance = async (chainId: number, address: Address) => {
+		const publicClient = getPublicClient(chainId);
+		const decimals = await publicClient.readContract({
+			address: chainConfigs[chainId].tokenAddress as `0x${string}`,
+			abi: erc20Abi,
+			functionName: "decimals",
+		});
+	
+		const balance = await publicClient.readContract({
+			address: chainConfigs[chainId].tokenAddress as `0x${string}`,
+			abi: erc20Abi,
+			functionName: "balanceOf",
+			args: [address],
+		});
+
+		setBalance(Number(balance) / (10 ** Number(decimals)));
+	}
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+	useEffect(() => {
+		if (!chainId || !acconunt.address) return;
+		getBalance(chainId, acconunt.address)
+	}, [chainId, acconunt.address]);
+
 	if (!address) {
 		return (
 			<Alert className="mt-4 bg-amber-50 text-amber-800 border-amber-200">
@@ -382,7 +409,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 										</div>
 										<div>
 											<p className="text-muted-foreground">Wallet Balance</p>
-											<p className="font-medium text-primary">₦10000</p>
+											<p className="font-medium text-primary">₦{balance}</p>
 										</div>
 									</div>
 								</div>

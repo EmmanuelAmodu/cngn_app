@@ -11,14 +11,14 @@ import { Badge } from "@/components/ui/badge"
 
 export interface TransactionTableData {
   amount: number;
-  chain_id: number;
-  created_at: string; // ISO timestamp
-  on_chain_tx: string | null;
-  onramp_id: string;
-  payment_reference: string;
+  chainId: number;
+  createdAt: string; // ISO timestamp
+  onChainTx: string | null;
+  onrampId: string;
+  paymentReference: string;
   status: 'pending' | 'completed' | 'failed'; // assuming these are possible statuses
-  updated_at: string; // ISO timestamp
-  user_address: string;
+  updatedAt: string; // ISO timestamp
+  userAddress: string;
 };
 
 interface TransactionsTableProps {
@@ -130,23 +130,23 @@ export default function TransactionsTable({transactions, copyToClipboard}: Trans
               <TableBody>
                 {filteredTransactions.length > 0 ? (
                   filteredTransactions.map((transaction) => (
-                    <TableRow key={transaction.onramp_id}>
+                    <TableRow key={transaction.onrampId}>
                       <TableCell className="font-medium">
-                        {`${transaction.onramp_id.slice(0, 5)}...${transaction.onramp_id.slice(transaction.onramp_id.length - 5)}`}
-                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(transaction.onramp_id)}>
+                        {`${transaction.onrampId.slice(0, 5)}...${transaction.onrampId.slice(transaction.onrampId.length - 5)}`}
+                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(transaction.onrampId)}>
                           <Copy className="h-4 w-4" />
                         </Button>
                       </TableCell>
-                      <TableCell>{transaction.created_at.split("T")[0]}</TableCell>
+                      <TableCell>{transaction.createdAt.split("T")[0]}</TableCell>
                       <TableCell>
-                        {`${transaction.on_chain_tx ? transaction.on_chain_tx.slice(0, 5) : ''}`}
-                        {`${transaction.on_chain_tx ? '...' : ''}`}
-                        {`${transaction.on_chain_tx ? transaction.on_chain_tx.slice(transaction.on_chain_tx.length - 5) : ''}`}
-                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(transaction.on_chain_tx || '')}>
+                        {`${transaction.onChainTx ? transaction.onChainTx.slice(0, 5) : ''}`}
+                        {`${transaction.onChainTx ? '...' : ''}`}
+                        {`${transaction.onChainTx ? transaction.onChainTx.slice(transaction.onChainTx.length - 5) : ''}`}
+                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(transaction.onChainTx || '')}>
                           <Copy className="h-4 w-4" />
                         </Button>
                       </TableCell>
-                      <TableCell className="text-right">{transaction.chain_id}</TableCell>
+                      <TableCell className="text-right">{transaction.chainId}</TableCell>
                       <TableCell className="text-right">₦{transaction.amount.toFixed(2)}</TableCell>
                       <TableCell>{getStatusBadge(transaction.status)}</TableCell>
                     </TableRow>

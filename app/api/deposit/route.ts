@@ -7,7 +7,7 @@ import {
   getPublicClient,
   getTokenAddress,
 } from "@/lib/blockchain";
-import { erc20Abi, Transaction, TransactionReceipt, type Address, type Hex } from "viem";
+import { erc20Abi, type TransactionReceipt, type Address, type Hex } from "viem";
 import Bull, { type Job } from "bull";
 import { randomBytes } from "crypto";
 import { getCustomerTransactions } from "@/lib/paystack-client";

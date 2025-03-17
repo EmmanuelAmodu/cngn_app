@@ -63,16 +63,16 @@ export default function TransactionsTable({transactions, copyToClipboard}: Trans
     <Card className="w-full max-w-4xl mx-auto">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Transactions</CardTitle>
-        <div className="flex items-center gap-2">
+        {/* <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
             <DownloadIcon className="mr-2 h-4 w-4" />
             Export
           </Button>
-        </div>
+        </div> */}
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between gap-4">
+          {/* <div className="flex flex-col sm:flex-row justify-between gap-4">
             <div className="relative w-full sm:w-64">
               <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input type="search" placeholder="Search transactions..." className="w-full pl-8" />
@@ -83,7 +83,7 @@ export default function TransactionsTable({transactions, copyToClipboard}: Trans
                 Filter by date
               </Button>
             </div>
-          </div>
+          </div> */}
 
           <div className="flex flex-wrap gap-2 mb-4">
             <Button

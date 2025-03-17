@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle2, AlertCircle, Loader2, Copy, CreditCardIcon } from "lucide-react";
+import {
+	CheckCircle2,
+	AlertCircle,
+	Loader2,
+	Copy,
+	CreditCardIcon,
+} from "lucide-react";
 import { Steps, Step } from "@/components/ui/steps";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -21,6 +27,7 @@ import TransactionsTable, {
 } from "./transactions-table";
 import { useInterval } from "react-interval-hook";
 import { usePolling } from "@/hooks/use-polling";
+import { useAccount } from "wagmi";
 
 interface OnrampFormProps {
 	address: string | undefined;
@@ -58,6 +65,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 	const [onRampTransactions, setOnRampTransactions] = useState<
 		TransactionTableData[]
 	>([]);
+	const acconunt = useAccount();
 
 	useEffect(() => {
 		if (address) {
@@ -232,11 +240,9 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 		setError(null);
 		setIsLoading(true);
 
+		if (!acconunt.address || !chainId) return;
 		try {
-			const response = await fetchDepositAPI(
-				virtualAccount.reference,
-				chainId || 1,
-			);
+			const response = await fetchDepositAPI(chainId, acconunt.address);
 			setOnRampTransactions(response.data);
 		} catch (err) {
 			console.error("Deposit confirmation error:", err);
@@ -249,10 +255,17 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 		}
 	};
 
-  usePolling(() => {
-    console.log("Polling for new transactions...");
-    handleConfirmDeposit();
-  }, 10000, { immediate: true, start: !!virtualAccount });
+	usePolling(
+		() => {
+			console.log("Polling for new transactions...");
+			handleConfirmDeposit();
+		},
+		10000,
+		{
+			immediate: true,
+			start: !!virtualAccount && !!chainId && !!acconunt.address,
+		},
+	);
 
 	if (!address) {
 		return (
@@ -334,56 +347,62 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 
 				{currentStep === 1 && virtualAccount && (
 					<div>
-            <Card className="bg-gradient-to-r border shadow-sm m-4">
-              <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-primary/10 p-2 rounded-full">
-                      <CreditCardIcon className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Account for deposits</p>
-                      <p className="text-lg font-bold">
-                        {virtualAccount.accountNumber}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(virtualAccount.accountNumber)}
-                        >
-                          <Copy className="h-4 w-4" />
-										    </Button>
-                      </p>
-                    </div>
-                  </div>
-                    <div>
-                      <p className="text-muted-foreground">Bank</p>
-                      <p className="font-medium">
-                        {virtualAccount.bankName}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(virtualAccount.bankName)}
-                        >
-                          <Copy className="h-4 w-4" />
-										    </Button>
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Account Name</p>
-                      <p className="font-medium">
-                        {virtualAccount.accountName}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(virtualAccount.accountName)}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </p>
-                    </div>
-                </div>
-              </CardContent>
-            </Card>
+						<Card className="bg-gradient-to-r border shadow-sm m-4">
+							<CardContent className="p-4">
+								<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+									<div className="flex items-center gap-3">
+										<div className="bg-primary/10 p-2 rounded-full">
+											<CreditCardIcon className="h-5 w-5 text-primary" />
+										</div>
+										<div>
+											<p className="text-sm text-muted-foreground">
+												Account for deposits
+											</p>
+											<p className="text-lg font-bold">
+												{virtualAccount.accountNumber}
+												<Button
+													variant="ghost"
+													size="sm"
+													onClick={() =>
+														copyToClipboard(virtualAccount.accountNumber)
+													}
+												>
+													<Copy className="h-4 w-4" />
+												</Button>
+											</p>
+										</div>
+									</div>
+									<div>
+										<p className="text-muted-foreground">Bank</p>
+										<p className="font-medium">
+											{virtualAccount.bankName}
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={() => copyToClipboard(virtualAccount.bankName)}
+											>
+												<Copy className="h-4 w-4" />
+											</Button>
+										</p>
+									</div>
+									<div>
+										<p className="text-muted-foreground">Account Name</p>
+										<p className="font-medium">
+											{virtualAccount.accountName}
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={() =>
+													copyToClipboard(virtualAccount.accountName)
+												}
+											>
+												<Copy className="h-4 w-4" />
+											</Button>
+										</p>
+									</div>
+								</div>
+							</CardContent>
+						</Card>
 
 						<TransactionsTable
 							transactions={onRampTransactions}

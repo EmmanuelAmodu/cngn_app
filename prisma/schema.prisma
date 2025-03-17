@@ -21,8 +21,38 @@ enum Status {
   queued
 }
 
+enum TransactionType {
+  onramp
+  offramp
+  bridge
+}
+
+enum Currency {
+  NGN
+  USD
+  KES
+  EUR
+  GBP
+}
+
+model User {
+  address     String    @id @map("address")
+  email       String?   @unique
+  firstName   String?   @map("first_name")
+  lastName    String?   @map("last_name")
+  mobileNumber String?  @unique @map("mobile_number")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  transactions    Transaction[]
+  virtualAccounts VirtualAccount[]
+}
+
 model VirtualAccount {
-  userAddress   String    @id @map("user_address")
+  id            String    @id @default(uuid()) @map("virtual_account_id")
+  userAddress   String    @map("user_address")
+  currency      Currency
   accountName   String    @map("account_name")
   accountNumber String    @map("account_number")
   bankName      String    @map("bank_name")
@@ -30,56 +60,47 @@ model VirtualAccount {
   createdAt     DateTime  @default(now()) @map("created_at")
 
   // Relations
-  onramps       Onramp[]
+  user          User      @relation(fields: [userAddress], references: [address])
+  transactions  Transaction[]
+
+  @@unique([userAddress, currency], name: "unique_user_currency")
+  @@index([userAddress], name: "idx_virtual_accounts_user_address")
+  @@index([currency], name: "idx_virtual_accounts_currency")
 }
 
-model Onramp {
-  onrampId         String         @id @map("onramp_id")
-  userAddress      String         @map("user_address")
-  amount           Int
-  chainId          Int?           @map("chain_id")
-  onChainTx        String?        @map("on_chain_tx")
-  status           Status         @default(pending)
-  paymentReference String         @unique @map("payment_reference")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @default(now()) @updatedAt @map("updated_at")
+model Transaction {
+  id                    String         @id @map("transaction_id")
+  type                  TransactionType
+  userAddress           String         @map("user_address")
+  amount                Int
+  currency              Currency
+  status                Status         @default(pending)
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @default(now()) @updatedAt @map("updated_at")
+
+  // Onramp specific fields
+  paymentReference      String?        @unique @map("payment_reference")
+  chainId               Int?           @map("chain_id")
+  onChainTx             String?        @map("on_chain_tx")
+
+  // Offramp specific fields
+  bankAccount           String?        @map("bank_account")
+  bankCode              String?        @map("bank_code")
+  bankTransferReference String?        @unique @map("bank_transfer_reference")
+  recipientId           String?        @map("recipient_id")
+
+  // Bridge specific fields
+  sourceChainId         Int?           @map("source_chain_id")
+  destinationChainId    Int?           @map("destination_chain_id")
+  sourceTxHash          String?        @map("source_tx_hash")
+  destinationTxHash     String?        @map("destination_tx_hash")
 
   // Relations
-  user VirtualAccount @relation(fields: [userAddress], references: [userAddress])
+  user                  User           @relation(fields: [userAddress], references: [address], map: "Transaction_user_fkey")
+  virtualAccount        VirtualAccount? @relation(fields: [userAddress, currency], references: [userAddress, currency], map: "Transaction_virtual_account_fkey")
 
-  @@index([userAddress], name: "idx_onramps_user_address")
-}
-
-model Offramp {
-  offrampId             String    @id @map("offramp_id")
-  userAddress           String    @map("user_address")
-  bankAccount           String    @map("bank_account")
-  bankCode              String    @map("bank_code")
-  chainId               Int       @map("chain_id")
-  onChainTx             String?   @map("on_chain_tx")
-  bankTransferReference String?   @unique @map("bank_transfer_reference")
-  recipientId           String    @map("recipient_id")
-  amount                Int
-  status                Status    @default(pending)
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
-
-  @@index([userAddress], name: "idx_offramps_user_address")
-  @@index([status], name: "idx_offramps_status")
-}
-
-model Bridge {
-  bridgeId           String    @id @map("bridge_id")
-  userAddress        String    @map("user_address")
-  amount             Int
-  sourceChainId      Int       @map("source_chain_id")
-  destinationChainId Int       @map("destination_chain_id")
-  sourceTxHash       String?   @map("source_tx_hash")
-  destinationTxHash  String?   @map("destination_tx_hash")
-  status             Status    @default(pending)
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at")
-
-  @@index([userAddress], name: "idx_bridges_user_address")
-  @@index([status], name: "idx_bridges_status")
+  @@index([userAddress], name: "idx_transactions_user_address")
+  @@index([status], name: "idx_transactions_status")
+  @@index([type], name: "idx_transactions_type")
+  @@index([currency], name: "idx_transactions_currency")
 }

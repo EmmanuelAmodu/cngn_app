@@ -16,13 +16,16 @@ const bridgeQueue = new Bull("bridge_queue", {
 
 export async function crossChainPolling() {
   bridgeQueue.process(async (job) => {
-    const { bridgeId, userAddress, amount, sourceChainId, destinationChainId } = job.data;
-    await processBridgeFrom(bridgeId, userAddress, BigInt(amount), sourceChainId, destinationChainId);
+    const { transactionId, userAddress, amount, sourceChainId, destinationChainId } = job.data;
+    await processBridgeFrom(transactionId, userAddress, BigInt(amount), sourceChainId, destinationChainId);
   });
 
   while (true) {
-    const data = await prisma.bridge.findMany({
-      where: { status: 'pending' },
+    const data = await prisma.transaction.findMany({
+      where: { 
+        status: 'pending',
+        type: 'bridge'
+      },
       take: 100,
     })
 
@@ -32,30 +35,30 @@ export async function crossChainPolling() {
       continue;
     }
 
-    for (const bridge of data) {
+    for (const transaction of data) {
       const {
-        bridgeId,
+        id,
         sourceChainId,
-      } = bridge;
+      } = transaction;
       try {
         const publicClient = getPublicClient(sourceChainId);
 
-        const [userAddress, amount, destinationChainIdFromContract, bridgeIdFromContract] = await publicClient.readContract({
+        const [userAddress, amount, destinationChainIdFromContract, transactionIdFromContract] = await publicClient.readContract({
           address: chainConfigs[sourceChainId].contractAddress as `0x${string}`,
           abi: DEX_ABI,
           functionName: "bridgeEntryRecords",
           args: [
-            bridgeId as `0x${string}`,
+            id as `0x${string}`,
           ],
         });
 
         await bridgeQueue.add(
-          { bridgeId: bridgeIdFromContract, userAddress, amount, sourceChainId, destinationChainId: destinationChainIdFromContract },
+          { transactionId: transactionIdFromContract, userAddress, amount, sourceChainId, destinationChainId: destinationChainIdFromContract },
           { delay: 5000 }
         );
 
-        await prisma.bridge.update({
-          where: { bridgeId: bridge.bridgeId },
+        await prisma.transaction.update({
+          where: { id: transaction.id },
           data: {
             status: "queued",
             amount: Number(amount),
@@ -65,7 +68,7 @@ export async function crossChainPolling() {
         })
   
       } catch (error) {
-        console.error(`Error processing bridge ${bridgeId}:`, error);
+        console.error(`Error processing bridge ${id}:`, error);
       }
     }
 
@@ -78,7 +81,7 @@ async function sendCNGNOnDestinationChain(
   userAddress: string,
   amount: bigint,
   sourceChainId: number,
-  bridgeId: string
+  transactionId: string
 ): Promise<{ txHash: Hash }> {
   try {
     const chainConfig = chainConfigs[destinationChainId];
@@ -104,7 +107,7 @@ async function sendCNGNOnDestinationChain(
         userAddress as `0x${string}`,
         amount,
         sourceChainId as number,
-        bridgeId as `0x${string}`,
+        transactionId as `0x${string}`,
       ],
       chain: chainConfig.chain,
       account: walletClient.account,
@@ -127,27 +130,28 @@ async function sendCNGNOnDestinationChain(
 }
 
 async function processBridgeFrom(
-  bridgeId: string,
+  transactionId: string,
   userAddress: string,
   amount: bigint,
   sourceChainId: number,
   destinationChainId: number
 ) {
   try {
-    const data = await prisma.bridge.findFirst({
+    const data = await prisma.transaction.findFirst({
       where: {
-        bridgeId, 
-        status: "queued"
+        id: transactionId, 
+        status: "queued",
+        type: 'bridge'
       },
     })
 
     if (!data) {
-      console.log(`Bridge ${bridgeId} not found or already processed`);
+      console.log(`Bridge ${transactionId} not found or already processed`);
       return;
     }
 
-    await prisma.bridge.update({
-      where: { bridgeId },
+    await prisma.transaction.update({
+      where: { id: transactionId },
       data: { status: "processing" }
     })
 
@@ -157,23 +161,23 @@ async function processBridgeFrom(
       userAddress,
       amount,
       sourceChainId,
-      bridgeId
+      transactionId
     );
 
-    await prisma.bridge.update({
-      where: { bridgeId },
+    await prisma.transaction.update({
+      where: { id: transactionId },
       data: {
         status: "completed",
         destinationTxHash: result.txHash,
       }
     })
 
-    console.log(`Bridge ${bridgeId} processed successfully`);
+    console.log(`Bridge ${transactionId} processed successfully`);
   } catch (error) {
-    console.error(`Error processing bridge ${bridgeId}:`, error);
+    console.error(`Error processing bridge ${transactionId}:`, error);
 
-    await prisma.bridge.update({
-      where: { bridgeId },
+    await prisma.transaction.update({
+      where: { id: transactionId },
       data: {
         status: "failed",
       }

@@ -72,8 +72,12 @@ export async function GET(request: Request) {
   console.log("Fetching user's latest transaction...", accountData);
   await getUsersLatestTransaction(userAddress, accountData.reference);
 
-  const onramps = await prisma.onramp.findMany({
-    where: { userAddress, chainId },
+  const transactions = await prisma.transaction.findMany({
+    where: { 
+      userAddress, 
+      chainId,
+      type: 'onramp'
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -81,7 +85,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     success: true,
-    data: onramps,
+    data: transactions,
   });
 }
 
@@ -91,17 +95,18 @@ async function processOffRamp(job: Job) {
   try {
     const { userAddress, chainId } = job.data;
 
-    console.log("Updating onramps in database...");
-    const onramps = await prisma.onramp.findMany({
+    console.log("Updating transactions in database...");
+    const transactions = await prisma.transaction.findMany({
       where: {
         userAddress,
-        status: 'pending'
+        status: 'pending',
+        type: 'onramp'
       }
     })
 
-    await prisma.onramp.updateMany({
+    await prisma.transaction.updateMany({
       where: {
-        onrampId: { in: onramps.map(e => e.onrampId) }
+        id: { in: transactions.map(e => e.id) }
       },
       data: {
         status: "processing",
@@ -109,14 +114,14 @@ async function processOffRamp(job: Job) {
       }
     })
 
-    console.log("onramps updated successfully");
+    console.log("transactions updated successfully");
 
-    for (let i = 0; i < onramps.length; i++) {
+    for (let i = 0; i < transactions.length; i++) {
       await commitOnChain(
         Number(chainId),
-        onramps[i].amount,
+        transactions[i].amount,
         userAddress as Hex,
-        onramps[i].onrampId as Hex
+        transactions[i].id as Hex
       );
     }
   } catch (error) {
@@ -129,7 +134,7 @@ async function commitOnChain(
   chainId: number,
   amount: number,
   userAddress: Address,
-  onrampId: Hex
+  transactionId: Hex
 ) {
   const walletClient = getWalletClient(chainId);
   const publicClient = getPublicClient(chainId);
@@ -179,7 +184,7 @@ async function commitOnChain(
       abi: contractABI,
       account: walletClient.account,
       functionName: "onRamp",
-      args: [userAddress as Address, amountInWei, onrampId],
+      args: [userAddress as Address, amountInWei, transactionId],
       chain,
     });
 
@@ -192,8 +197,8 @@ async function commitOnChain(
     console.log("Transaction confirmed:", receipt);
   } catch (error) {
     console.error("Deposit transaction failed:", error);
-    await prisma.onramp.update({
-      where: { onrampId },
+    await prisma.transaction.update({
+      where: { id: transactionId },
       data: {
         status: "pending",
       }
@@ -202,8 +207,8 @@ async function commitOnChain(
   }
 
   if (txHash && receipt) {
-    await prisma.onramp.update({
-      where: { onrampId },
+    await prisma.transaction.update({
+      where: { id: transactionId },
       data: {
         status: "completed",
         onChainTx: txHash,
@@ -222,18 +227,20 @@ async function getUsersLatestTransaction(userAddress: string, customerId: string
       continue;
     }
 
-    const data = await prisma.onramp.findFirst({
+    const data = await prisma.transaction.findFirst({
       where: { paymentReference: id.toString() },
     });
 
     if (data) continue;
 
-    await prisma.onramp.create({
+    await prisma.transaction.create({
       data: {
-        onrampId: `0x${randomBytes(32).toString("hex")}`,
+        id: `0x${randomBytes(32).toString("hex")}`,
+        type: 'onramp',
         paymentReference: id.toString(),
         userAddress,
         amount: amount / 100,
+        currency: 'NGN'
       }
     });
   }

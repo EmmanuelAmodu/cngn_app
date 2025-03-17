@@ -17,13 +17,16 @@ const offRampQueue = new Bull("offramp_queue", {
 
 export async function offRampPolling() {
   offRampQueue.process(async (job) => {
-    const { offRampId } = job.data;
-    await processWithdrawal(offRampId);
+    const { transactionId } = job.data;
+    await processWithdrawal(transactionId);
   });
 
   while (true) {
-    const data = await prisma.offramp.findMany({
-      where: { status: 'pending' },
+    const data = await prisma.transaction.findMany({
+      where: { 
+        status: 'pending',
+        type: 'offramp'
+      },
       take: 100
     })
 
@@ -33,11 +36,11 @@ export async function offRampPolling() {
       continue;
     }
 
-    for (const offRamp of data) {
+    for (const transaction of data) {
       const {
-        offrampId,
+        id,
         chainId,
-      } = offRamp;
+      } = transaction;
       try {
         const publicClient = getPublicClient(chainId);
 
@@ -47,28 +50,28 @@ export async function offRampPolling() {
           abi: erc20Abi
         });
 
-        const [amount, offRampId] = await publicClient.readContract({
+        const [amount, transactionId] = await publicClient.readContract({
           address: chainConfigs[chainId].contractAddress as `0x${string}`,
           abi: DEX_ABI,
           functionName: "offRampRecords",
           args: [
-            offrampId as `0x${string}`,
+            id as `0x${string}`,
           ],
         });
 
         if (Number(amount) === 0) {
-          console.log(`Offramp ${offrampId} not found`);
+          console.log(`Offramp ${id} not found`);
           continue;
         }
 
         const amountInt = Number(amount) / (10 ** decimals)
         await offRampQueue.add(
-          { offRampId },
+          { transactionId: id },
           { delay: 5000 }
         );
 
-        await prisma.offramp.update({
-          where: { offrampId },
+        await prisma.transaction.update({
+          where: { id },
           data: {
             status: "queued",
             amount: amountInt,
@@ -76,7 +79,7 @@ export async function offRampPolling() {
         })
   
       } catch (error) {
-        console.error(`Error processing bridge ${offrampId}:`, error);
+        console.error(`Error processing offramp ${id}:`, error);
       }
     }
 
@@ -84,21 +87,22 @@ export async function offRampPolling() {
   }
 }
 
-export async function processWithdrawal(offrampId: string) {
-  const offramp = await prisma.offramp.findFirst({
+export async function processWithdrawal(transactionId: string) {
+  const transaction = await prisma.transaction.findFirst({
     where: {
-      offrampId,
-      status: 'queued'
+      id: transactionId,
+      status: 'queued',
+      type: 'offramp'
     }
   })
 
-  if (!offramp) {
+  if (!transaction) {
     throw new Error("Failed to get offramp details");
   }
 
   try {
-    await prisma.offramp.update({
-      where: { offrampId },
+    await prisma.transaction.update({
+      where: { id: transactionId },
       data: {
         status: "processing",
       }
@@ -106,26 +110,26 @@ export async function processWithdrawal(offrampId: string) {
 
     // Send NGN to bank account
     const transfer = await initiateTransfer(
-      offramp.amount,
-      offramp.recipientId,
-      offrampId,
+      transaction.amount,
+      transaction.recipientId,
+      transactionId,
       "Payout from Pepper",
     );
 
-    await prisma.offramp.update({
-      where: { offrampId },
+    await prisma.transaction.update({
+      where: { id: transactionId },
       data: {
         status: "completed",
         bankTransferReference: transfer.reference,
       }
     })
 
-    console.log(`Withdrawal ${offrampId} processed successfully`);
+    console.log(`Withdrawal ${transactionId} processed successfully`);
   } catch (error) {
-    console.error(`Error processing withdrawal ${offrampId}:`, error);
+    console.error(`Error processing withdrawal ${transactionId}:`, error);
 
-    await prisma.offramp.update({
-      where: { offrampId },
+    await prisma.transaction.update({
+      where: { id: transactionId },
       data: {
         status: "failed",
       }

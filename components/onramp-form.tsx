@@ -25,11 +25,10 @@ import { chainConfigs } from "@/lib/constants";
 import TransactionsTable, {
 	type TransactionTableData,
 } from "./transactions-table";
-import { useInterval } from "react-interval-hook";
 import { usePolling } from "@/hooks/use-polling";
 import { useAccount } from "wagmi";
 import { getPublicClient } from "@/lib/blockchain";
-import { Address, erc20Abi } from "viem";
+import { type Address, erc20Abi } from "viem";
 
 interface OnrampFormProps {
 	address: string | undefined;

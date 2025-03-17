@@ -74,6 +74,7 @@ export async function GET(request: Request) {
 
   const onramps = await prisma.onramp.findMany({
     where: { userAddress, chainId },
+    orderBy: { createdAt: "desc" },
   });
 
   await onrampQueue.add({ userAddress, chainId });

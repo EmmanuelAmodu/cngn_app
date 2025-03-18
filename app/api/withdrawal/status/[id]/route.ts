@@ -3,17 +3,18 @@ import { NextResponse } from "next/server"
 
 export async function GET(request: Request, { params }: { params: { offrampId: string } }) {
   try {
-    const offRamp = await prisma.offramp.findUnique({
+    const transaction = await prisma.transaction.findUnique({
       where: {
-        offrampId: params.offrampId
+        id: params.offrampId,
+        type: 'offramp'
       }
     })
 
-    if (!offRamp) {
+    if (!transaction) {
       return NextResponse.json({ error: "Withdrawal not found" }, { status: 404 })
     }
 
-    return NextResponse.json(offRamp)
+    return NextResponse.json(transaction)
   } catch (error) {
     console.error("Error getting withdrawal status:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

@@ -10,22 +10,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
     }
 
-    // Generate a unique bridge ID as bytes32
-    const bridgeId = `0x${randomBytes(32).toString("hex")}`
+    // Generate a unique transaction ID as bytes32
+    const transactionId = `0x${randomBytes(32).toString("hex")}`
 
-    await prisma.bridge.create({
+    await prisma.transaction.create({
       data: {
-        bridgeId,
+        id: transactionId,
+        type: 'bridge',
         userAddress,
         amount: Number.parseInt(amount),
         sourceChainId,
         destinationChainId: destinationChain,
+        currency: 'NGN'
       }
     })
 
     return NextResponse.json({
       success: true,
-      bridgeId,
+      transactionId,
     })
   } catch (error) {
     console.error("Error in bridge initiation:", error)

@@ -20,6 +20,31 @@ export async function GET(
       });
     }
 
+    const user = await prisma.user.findFirst({
+      where: {
+        address: params.address
+      }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const virtualAccount = await getOrCreateAccount(
+      user.firstName,
+      user.lastName,
+      user.email,
+      user.mobileNumber,
+      params.address
+    )
+
+    if (virtualAccount) {
+      return NextResponse.json({
+        success: true,
+        data
+      });
+    }
+
     return NextResponse.json({ error: "Account not found" }, { status: 404 });
   } catch (error) {
     console.error("Error fetching deposit volume:", error);
@@ -123,6 +148,7 @@ async function getOrCreateAccount(
       bankName: responseData.bank.name,
       accountName: responseData.account_name,
       reference: createCustomerResponseData.id.toString(),
+      currency: "NGN",
     }
   })
 

@@ -22,13 +22,13 @@ import {
 	fetchVirtualAccountAPI,
 } from "@/lib/api";
 import { chainConfigs } from "@/lib/constants";
-import TransactionsTable, {
-	type TransactionTableData,
-} from "./transactions-table";
+import TransactionsTable from "./transactions-table";
 import { usePolling } from "@/hooks/use-polling";
 import { useAccount } from "wagmi";
 import { getPublicClient } from "@/lib/blockchain";
 import { type Address, erc20Abi } from "viem";
+import type { Transaction } from "@/hooks/use-transactions";
+import BankAccountDetails from "./bank-account-details";
 
 interface OnrampFormProps {
 	address: string | undefined;
@@ -39,7 +39,7 @@ interface VirtualAccount {
 	accountNumber: string;
 	bankName: string;
 	accountName: string;
-	reference: string;
+	reference?: string;
 }
 
 interface UserDetails {
@@ -64,74 +64,16 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 		email: "",
 		mobileNumber: "",
 	});
-	const [onRampTransactions, setOnRampTransactions] = useState<
-		TransactionTableData[]
-	>([]);
+	const [onRampTransactions, setOnRampTransactions] = useState<Transaction[]>([]);
 	const acconunt = useAccount();
 
-	useEffect(() => {
-		if (address) {
-			console.log("Fetching Account");
-			setIsLoading(true);
-			fetchVirtualAccountAPI(address.toLowerCase())
-				.then((data) => {
-					if (data) {
-						console.log("VA Account data");
-						setVirtualAccount(data);
-						setCurrentStep(1);
-					}
-
-					setIsLoading(false);
-				})
-				.catch((err) => {
-					setIsLoading(false);
-				});
+	// Handle account fetched
+	const handleAccountFetched = useCallback((account: VirtualAccount | null) => {
+		if (account) {
+			setVirtualAccount(account);
+			setCurrentStep(1);
 		}
-	}, [address]);
-
-	// Add this function at the beginning of the OnrampForm component
-	const ensureCorrectNetwork = async () => {
-		if (!chainId) {
-			setError("Please connect your wallet first");
-			return false;
-		}
-
-		if (!window.ethereum) {
-			setError("MetaMask is not installed");
-			return false;
-		}
-
-		try {
-			const chainIdHex = await window.ethereum.request({
-				method: "eth_chainId",
-			});
-			const currentChainId = Number.parseInt(chainIdHex, 16);
-
-			if (currentChainId !== chainId) {
-				setError(
-					`Please switch your wallet to ${chainConfigs[chainId].name} network to continue`,
-				);
-
-				// Prompt the user to switch networks
-				try {
-					await window.ethereum.request({
-						method: "wallet_switchEthereumChain",
-						params: [{ chainId: `0x${chainId.toString(16)}` }],
-					});
-					return true;
-				} catch (switchError) {
-					console.error("Failed to switch networks:", switchError);
-					return false;
-				}
-			}
-
-			return true;
-		} catch (error) {
-			console.error("Error checking network:", error);
-			setError("Failed to verify network. Please try again.");
-			return false;
-		}
-	};
+	}, []);
 
 	// Copy to clipboard function
 	const copyToClipboard = async (text: string) => {
@@ -158,10 +100,6 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 			setError("Please connect your wallet first");
 			return;
 		}
-
-		// Ensure wallet is on the correct network
-		const isCorrectNetwork = await ensureCorrectNetwork();
-		if (!isCorrectNetwork) return;
 
 		// Validate user details
 		if (
@@ -203,7 +141,7 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 			const account = await generateVirtualAccountAPI({
 				userAddress: address,
 				...userDetails,
-				chainId: chainId || 1,
+				currency: "NGN",
 			});
 
 			if (!account.status || !account.data) {
@@ -234,10 +172,6 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 			setError("No virtual account found");
 			return;
 		}
-
-		// Ensure wallet is on the correct network
-		const isCorrectNetwork = await ensureCorrectNetwork();
-		if (!isCorrectNetwork) return;
 
 		setError(null);
 		setIsLoading(true);
@@ -306,129 +240,82 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 
 	return (
 		<div className="space-y-6 py-4">
-			<div className="space-y-6">
-				{currentStep === 0 && (
-					<Card>
-						<CardContent className="pt-6 space-y-4">
+			<Steps currentStep={currentStep} className="mb-8">
+				<Step title="Enter Details" description="Personal information" completed={currentStep >= 0} />
+				<Step title="Get Account" description="Virtual account details" completed={currentStep >= 1} />
+				<Step title="Complete" description="View transaction details" completed={currentStep >= 2} />
+			</Steps>
+
+			{currentStep === 0 && (
+				<Card>
+					<CardContent className="pt-6 space-y-4">
+						<div className="grid grid-cols-2 gap-4">
 							<div className="space-y-2">
 								<Label htmlFor="firstName">First Name</Label>
 								<Input
 									id="firstName"
 									name="firstName"
-									placeholder="Enter your first name"
 									value={userDetails.firstName}
 									onChange={handleInputChange}
 									disabled={isLoading}
 								/>
 							</div>
-
 							<div className="space-y-2">
 								<Label htmlFor="lastName">Last Name</Label>
 								<Input
 									id="lastName"
 									name="lastName"
-									placeholder="Enter your last name"
 									value={userDetails.lastName}
 									onChange={handleInputChange}
 									disabled={isLoading}
 								/>
 							</div>
+						</div>
 
-							<div className="space-y-2">
-								<Label htmlFor="email">Email</Label>
-								<Input
-									id="email"
-									name="email"
-									type="email"
-									placeholder="Enter your email"
-									value={userDetails.email}
-									onChange={handleInputChange}
-									disabled={isLoading}
-								/>
-							</div>
-
-							<div className="space-y-2">
-								<Label htmlFor="mobileNumber">Mobile Number</Label>
-								<Input
-									id="mobileNumber"
-									name="mobileNumber"
-									placeholder="Enter your mobile number"
-									value={userDetails.mobileNumber}
-									onChange={handleInputChange}
-									disabled={isLoading}
-								/>
-							</div>
-
-							<Button
-								onClick={handleGenerateAccount}
+						<div className="space-y-2">
+							<Label htmlFor="email">Email</Label>
+							<Input
+								id="email"
+								name="email"
+								type="email"
+								value={userDetails.email}
+								onChange={handleInputChange}
 								disabled={isLoading}
-								className="w-full"
-							>
-								{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-								Generate Virtual Account
-							</Button>
-						</CardContent>
-					</Card>
-				)}
+							/>
+						</div>
 
-				{currentStep === 1 && virtualAccount && (
-					<div>
-						<Card className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 border shadow-sm my-4">
-							<CardContent className="p-4">
-								<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-									<div className="flex items-center gap-3">
-										<div className="bg-primary/10 dark:bg-primary/20 p-2 rounded-full">
-											<CreditCardIcon className="h-5 w-5 text-primary" />
-										</div>
-										<div>
-											<p className="text-sm text-muted-foreground">Account Info</p>
-											<p className="text-lg font-bold">{virtualAccount.accountName}</p>
-											<p className="text-sm font-medium">
-												{virtualAccount.accountNumber}
-												<Button
-													variant="ghost"
-													size="sm"
-													onClick={() =>
-														copyToClipboard(virtualAccount.accountNumber)
-													}
-												>
-													<Copy className="h-4 w-4" />
-												</Button>
-											</p>
-										</div>
-									</div>
-									<div className="flex flex-col sm:flex-row gap-4 sm:gap-6 text-sm">
-										<div>
-											<p className="text-muted-foreground">Bank</p>
-											<p className="font-medium">{virtualAccount.bankName}</p>
-										</div>
-										<div>
-											<p className="text-muted-foreground">Routing</p>
-											<p className="font-medium">N/A</p>
-										</div>
-										<div>
-											<p className="text-muted-foreground">Wallet Balance</p>
-											<p className="font-medium text-primary">₦{balance}</p>
-										</div>
-									</div>
-								</div>
-							</CardContent>
-						</Card>
+						<div className="space-y-2">
+							<Label htmlFor="mobileNumber">Mobile Number</Label>
+							<Input
+								id="mobileNumber"
+								name="mobileNumber"
+								value={userDetails.mobileNumber}
+								onChange={handleInputChange}
+								disabled={isLoading}
+							/>
+						</div>
 
-						<TransactionsTable
-							transactions={onRampTransactions}
-							copyToClipboard={copyToClipboard}
-						/>
-					</div>
-				)}
+						<Button onClick={handleGenerateAccount} disabled={isLoading} className="w-full">
+							{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+							Generate Virtual Account
+						</Button>
+					</CardContent>
+				</Card>
+			)}
 
-				{error && (
-					<Alert variant="destructive">
-						<AlertCircle className="h-4 w-4" />
-						<AlertDescription>{error}</AlertDescription>
-					</Alert>
-				)}
-			</div>
+			{error && (
+				<Alert variant="destructive">
+					<AlertCircle className="h-4 w-4" />
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
+			)}
+
+			{success && !error && (
+				<Alert className="bg-green-50 text-green-800 border-green-200">
+					<AlertCircle className="h-4 w-4" />
+					<AlertDescription>{success}</AlertDescription>
+				</Alert>
+			)}
 		</div>
 	);
 }

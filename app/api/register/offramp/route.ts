@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
     }
 
-    const offrampId = `0x${randomBytes(32).toString("hex")}`
+    const transactionId = `0x${randomBytes(32).toString("hex")}`
 
     const data = await verifyBankAccount(bankAccount, bankCode);
 
@@ -22,21 +22,23 @@ export async function POST(request: Request) {
       userAddress
     );
 
-    const offramp = await prisma.offramp.create({
+    const transaction = await prisma.transaction.create({
       data: {
-        offrampId,
+        id: transactionId,
+        type: 'offramp',
         userAddress,
         bankCode,
         chainId,
         bankAccount,
         recipientId: recipient.recipient_code,
         amount: 0,
+        currency: 'NGN'
       }
     });
 
     return NextResponse.json({
       success: true,
-      data: Object.assign(offramp, { recipient: recipient.recipient_code }),
+      data: Object.assign(transaction, { recipient: recipient.recipient_code }),
     })
   } catch (error) {
     console.error("Error in offramp registration:", error)

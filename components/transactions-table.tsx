@@ -42,6 +42,12 @@ export default function TransactionsTable({transactions, copyToClipboard}: Trans
             Pending
           </Badge>
         )
+      case "queued":
+        return (
+          <Badge variant="outline" className="bg-cyan-50 text-cyan-600 border-cyan-200">
+            Queued
+          </Badge>
+        )
       case "processing":
         return (
           <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">

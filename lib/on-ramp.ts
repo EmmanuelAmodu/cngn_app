@@ -1,17 +1,10 @@
-import { NextResponse } from "next/server";
-import {
-  getWalletClient,
-  getContractAddress,
-  contractABI,
-  getChain,
-  getPublicClient,
-  getTokenAddress,
-} from "@/lib/blockchain";
 import { erc20Abi, type TransactionReceipt, type Address, type Hex } from "viem";
-import Bull, { type Job } from "bull";
+import { DEX_ABI } from "./abi/dex-abi";
+import { getPublicClient, getWalletClient, getContractAddress, getTokenAddress, getChain } from "./blockchain";
+import { getCustomerTransactions } from "./paystack-client";
+import Bull from "bull";
+import { prisma } from "./database";
 import { randomBytes } from "crypto";
-import { getCustomerTransactions } from "@/lib/paystack-client";
-import { prisma } from "@/lib/database";
 
 const REDIS_URL = process.env.REDIS_URL;
 if (!REDIS_URL) {
@@ -23,172 +16,184 @@ const onrampQueue = new Bull("onramp_queue", {
 });
 
 export async function onRampPolling() {
-  // Validate address format
-  await getUsersLatestTransaction();
-
-  const onramps = await prisma.onramp.findMany({
-    where: { userAddress, chainId },
-    orderBy: { createdAt: "desc" },
+  onrampQueue.process(async (job) => {
+    const { transactionId } = job.data;
+    await processOnRamp(transactionId, 8453);
   });
 
-  await onrampQueue.add({ userAddress, chainId });
+  while (true) {
+    console.log("Polling for pending onramps");
+    // First, check for new Paystack transactions for all virtual accounts
+    await syncPaystackTransactions();
 
-  return NextResponse.json({
-    success: true,
-    data: onramps,
-  });
+    // Then process pending transactions
+    const pendingTransactions = await prisma.onramp.findMany({
+      where: { 
+        status: 'pending',
+      },
+      take: 100
+    });
+
+    if (!pendingTransactions || pendingTransactions.length === 0) {
+      console.log("No pending onramps found");
+      await new Promise((resolve) => setTimeout(resolve, 10000));
+      continue;
+    }
+
+    for (const transaction of pendingTransactions) {
+      try {
+        await onrampQueue.add(
+          { 
+            onrampId: transaction.onrampId,
+            chainId: transaction.chainId
+          },
+          { delay: 5000 }
+        );
+
+        await prisma.onramp.update({
+          where: { onrampId: transaction.onrampId },
+          data: { status: "queued" }
+        });
+      } catch (error) {
+        console.error(`Error queueing onramp ${transaction.onrampId}:`, error);
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 30000));
+  }
 }
 
-onrampQueue.process(processOffRamp);
-
-async function processOffRamp(job: Job) {
+async function syncPaystackTransactions() {
   try {
-    const { userAddress, chainId } = job.data;
+    const transactions = await getCustomerTransactions();
+    console.log("Transactions count", transactions.length);
 
-    console.log("Updating onramps in database...");
-    const onramps = await prisma.onramp.findMany({
-      where: {
-        userAddress,
-        status: 'pending'
-      }
-    })
+    for (const transaction of transactions) {
+      const { status, amount, id, customer } = transaction;
+      if (status !== "success") continue;
 
-    await prisma.onramp.updateMany({
-      where: {
-        onrampId: { in: onramps.map(e => e.onrampId) }
-      },
-      data: {
-        status: "processing",
-        chainId: Number(chainId),
-      }
-    })
+      const virtualAccount = await prisma.virtualAccount.findFirst({
+        where: {
+          reference: customer.id.toString()
+        }
+      })
 
-    console.log("onramps updated successfully");
+      if (!virtualAccount) continue;
+      
+      // Check if we've already processed this transaction
+      const existingTransaction = await prisma.onramp.findFirst({
+        where: { paymentReference: id.toString() }
+      });
 
-    for (let i = 0; i < onramps.length; i++) {
-      await commitOnChain(
-        Number(chainId),
-        onramps[i].amount,
-        userAddress as Hex,
-        onramps[i].onrampId as Hex
-      );
+      if (existingTransaction) continue;
+
+      // Create new transaction record
+      await prisma.onramp.create({
+        data: {
+          onrampId: `0x${randomBytes(32).toString("hex")}`,
+          paymentReference: id.toString(),
+          userAddress: virtualAccount.userAddress,
+          amount: amount / 100, // Convert from kobo to naira
+          chainId: 8453,
+          status: 'pending'
+        }
+      });
     }
   } catch (error) {
-    console.error("Error in deposit webhook:", error);
-    throw error;
+    console.error("Error syncing Paystack transactions", error);
   }
 }
 
-async function commitOnChain(
-  chainId: number,
-  amount: number,
-  userAddress: Address,
-  onrampId: Hex
-) {
-  const walletClient = getWalletClient(chainId);
-  const publicClient = getPublicClient(chainId);
+async function processOnRamp(transactionId: string, chainId: number) {
+  console.log("Processing onramp", transactionId);
 
-  console.log(`Executing deposit transaction on chain ${chainId}...`);
-
-  const decimals = await publicClient.readContract({
-    address: getTokenAddress(Number(chainId)),
-    functionName: 'decimals',
-    abi: erc20Abi
+  const transaction = await prisma.onramp.findFirst({
+    where: {
+      onrampId: transactionId,
+      status: 'queued',
+    }
   });
 
-  const contractAddress = getContractAddress(Number(chainId));
-
-  // Convert amount to BigInt with proper decimal places (18 decimals for ERC20)
-  const amountMinusFees = amount - 50;
-  const amountInWei = BigInt(amountMinusFees * 10 ** decimals);
-
-  if (!walletClient.account) {
-    throw new Error("Wallet client account not initialized");
+  console.log("Processing Queued onramp", transaction);
+  if (!transaction) {
+    throw new Error("Transaction not found or already processed");
   }
 
-  if (amountInWei <= 0) {
-    throw new Error("Invalid amount");
-  }
+  await prisma.onramp.update({
+    where: { onrampId: transactionId },
+    data: { status: "processing" }
+  });
 
-  // Get the chain for the specified chainId
-  const chain = getChain(Number(chainId) || 1);
+  const { amount, userAddress } = transaction;
 
-  let txHash: Hex;
-  let receipt: TransactionReceipt;
+  // Commit transaction on-chain
+  const publicClient = getPublicClient(chainId);
+  const walletClient = getWalletClient(chainId);
+  const contractAddress = getContractAddress(chainId);
+
   try {
+    if (!walletClient.account) {
+      throw new Error("Wallet client account not initialized");
+    }
+
+    // Get token decimals
+    const decimals = await publicClient.readContract({
+      address: getTokenAddress(chainId),
+      functionName: 'decimals',
+      abi: erc20Abi
+    });
+
+    // Convert amount to wei (minus fees)
+    const amountMinusFees = amount - 50; // 50 naira fee
+    const amountInWei = BigInt(amountMinusFees * 10 ** decimals);
+
+    if (amountInWei <= 0) {
+      throw new Error("Invalid amount after fees");
+    }
+
+    // Check contract balance
     const balance = await publicClient.readContract({
-      address: getTokenAddress(Number(chainId)),
+      address: getTokenAddress(chainId),
       functionName: 'balanceOf',
       abi: erc20Abi,
       args: [contractAddress],
-    })
+    });
 
     if (balance < amountInWei) {
       throw new Error("Insufficient balance in contract");
     }
 
-    // Execute deposit transaction
-    txHash = await walletClient.writeContract({
-      address: getContractAddress(Number(chainId)),
-      abi: contractABI,
+    // Execute onramp transaction
+    const txHash = await walletClient.writeContract({
+      address: contractAddress,
+      abi: DEX_ABI,
       account: walletClient.account,
       functionName: "onRamp",
-      args: [userAddress as Address, amountInWei, onrampId],
-      chain,
+      args: [userAddress as Address, amountInWei, transactionId as Hex],
+      chain: getChain(chainId),
     });
 
-    console.log("Transaction submitted:", txHash);
+    // Wait for transaction confirmation
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-    // Get the public client for the specified chain
-    const client = getPublicClient(Number(chainId));
+    console.log("Receipt", receipt);
 
-    receipt = await client.waitForTransactionReceipt({ hash: txHash });
-    console.log("Transaction confirmed:", receipt);
-  } catch (error) {
-    console.error("Deposit transaction failed:", error);
+    // Update transaction status
     await prisma.onramp.update({
-      where: { onrampId },
-      data: {
-        status: "pending",
-      }
-    });
-    throw error;
-  }
-
-  if (txHash && receipt) {
-    await prisma.onramp.update({
-      where: { onrampId },
+      where: { onrampId: transactionId },
       data: {
         status: "completed",
         onChainTx: txHash,
       }
     });
-  }
-}
 
-async function getUsersLatestTransaction() {
-  const response = await getCustomerTransactions();
+    console.log(`Onramp ${transactionId} processed successfully`);
+  } catch (error) {
+    console.error(`Error processing onramp ${transactionId}:`, error);
 
-  console.log('User transactions', userAddress, customerId, response)
-  for (const transaction of response) {
-    const { status, amount, id } = transaction;
-    if (status !== "success") {
-      continue;
-    }
-
-    const data = await prisma.onramp.findFirst({
-      where: { paymentReference: id.toString() },
-    });
-
-    if (data) continue;
-
-    await prisma.onramp.create({
-      data: {
-        onrampId: `0x${randomBytes(32).toString("hex")}`,
-        paymentReference: id.toString(),
-        userAddress,
-        amount: amount / 100,
-      }
+    await prisma.onramp.update({
+      where: { onrampId: transactionId },
+      data: { status: "pending" }
     });
   }
-}
+} 

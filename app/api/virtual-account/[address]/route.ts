@@ -123,6 +123,7 @@ async function getOrCreateAccount(
       bankName: responseData.bank.name,
       accountName: responseData.account_name,
       reference: createCustomerResponseData.id.toString(),
+      currency: "NGN",
     }
   })
 

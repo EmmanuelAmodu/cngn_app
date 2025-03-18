@@ -1,16 +1,51 @@
-// Types for API responses
-export interface VirtualAccountResponse {
+import type { Currency } from "@prisma/client"
+
+interface APIResponse<T> {
   status: boolean
-  message: string
-  data: {
-    accountNumber: string
-    bankName: string
-    accountName: string
-    reference: string
-    expiresAt: string
+  message?: string
+  data?: T
+}
+
+interface VirtualAccountRequest {
+  userAddress: string
+  firstName: string
+  lastName: string
+  email: string
+  mobileNumber: string
+  currency: Currency
+}
+
+interface VirtualAccountResponse {
+  accountNumber: string
+  accountName: string
+  bankName: string
+  routingNumber?: string
+  reference?: string
+}
+
+export async function generateVirtualAccountAPI(
+  data: VirtualAccountRequest
+): Promise<APIResponse<VirtualAccountResponse>> {
+  try {
+    const response = await fetch("/api/generate-virtual-account", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error generating virtual account:", error)
+    return {
+      status: false,
+      message: "Failed to generate virtual account",
+    }
   }
 }
 
+// Types for API responses
 export interface BankVerificationResponse {
   status: boolean
   message: string
@@ -45,16 +80,6 @@ export interface BridgeStatusResponse {
 }
 
 // Add to your existing types
-export interface VirtualAccountRequest {
-  userAddress: string
-  firstName: string
-  lastName: string
-  email: string
-  mobileNumber: string
-  chainId?: number
-}
-
-// Add to your existing types
 export interface WithdrawalStatus {
   id: string
   status: "pending" | "processing" | "completed" | "failed"
@@ -70,70 +95,6 @@ export interface FundTransferResponse {
   message: string
   data: {
     transferReference: string[]
-  }
-}
-
-// Update the generateVirtualAccountAPI function
-export const generateVirtualAccountAPI = async (data: VirtualAccountRequest): Promise<VirtualAccountResponse> => {
-  try {
-    console.log("Calling generateVirtualAccountAPI with data:", {
-      userAddress: data.userAddress,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email,
-      mobileNumber: data.mobileNumber ? "REDACTED" : "MISSING",
-      chainId: data.chainId || 1,
-    })
-
-    const response = await fetch(`/api/virtual-account/${data.userAddress}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    })
-
-    console.log(`API response status: ${response.status}`)
-
-    if (!response.ok) {
-      const responseText = await response.text()
-      console.error("API error:", responseText)
-      throw new Error(responseText || "Failed to generate virtual account")
-    }
-
-    const responseData: {
-      success: boolean
-      data: {
-        accountNumber: string
-        bankName: string
-        accountName: string
-        reference: string
-        error?: string
-        details?: string
-      }
-    } = await response.json();
-
-    if (!responseData.success) {
-      console.error("API returned failure:", responseData)
-      throw new Error("Failed to generate virtual account")
-    }
-
-    console.log("Virtual account generated successfully:", responseData)
-
-    return {
-      status: true,
-      message: "Virtual account generated successfully",
-      data: {
-        accountNumber: responseData.data.accountNumber,
-        bankName: responseData.data.bankName,
-        accountName: responseData.data.accountName,
-        reference: responseData.data.reference,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
-      },
-    }
-  } catch (error) {
-    console.error("Error generating virtual account:", error)
-    throw error
   }
 }
 

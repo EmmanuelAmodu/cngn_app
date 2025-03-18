@@ -13,12 +13,7 @@ import { chainConfigs } from "@/lib/constants"
 import { Skeleton } from "@/components/ui/skeleton"
 
 const currencySymbols: Record<string, string> = {
-  USD: "$",
-  EUR: "€",
-  GBP: "£",
-  JPY: "¥",
-  BTC: "₿",
-  ETH: "Ξ",
+  NGN: "₦",
 }
 
 interface AccountDetails {
@@ -44,7 +39,7 @@ export default function BankAccountDetails({
   const [error, setError] = useState<string | null>(null);
   const [accountDetails, setAccountDetails] = useState<AccountDetails | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [selectedCurrency, setSelectedCurrency] = useState<string>("USD");
+  const [selectedCurrency, setSelectedCurrency] = useState<string>("NGN");
   const [balance, setBalance] = useState<number>(0);
 
   useEffect(() => {
@@ -56,8 +51,9 @@ export default function BankAccountDetails({
 
       try {
         const response = await fetchVirtualAccountAPI(userAddress?.toLowerCase());
-        if (response?.data) {
-          setAccountDetails(response.data);
+        if (response) {
+          console.log(response);
+          setAccountDetails(response);
         } else {
           throw new Error("Failed to fetch account details");
         }
@@ -124,11 +120,11 @@ export default function BankAccountDetails({
               </div>
             ) : accountDetails ? (
               <div>
-                <p className="text-sm text-muted-foreground">{accountDetails.accountType}</p>
+                <p className="text-sm text-muted-foreground">{accountDetails.accountType || "Savings Account"}</p>
                 <p className="text-lg font-bold">{accountDetails.accountName}</p>
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium">{accountDetails.accountNumber}</p>
-                  <Button
+                  {/* <Button
                     variant="outline"
                     size="sm"
                     onClick={() =>
@@ -136,7 +132,7 @@ export default function BankAccountDetails({
                     }
                   >
                     {copiedField === "accountNumber" ? "Copied!" : <Copy className="h-4 w-4" />}
-                  </Button>
+                  </Button> */}
                 </div>
               </div>
             ) : (
@@ -171,7 +167,7 @@ export default function BankAccountDetails({
                 </div>
                 <div>
                   <p className="text-muted-foreground">Routing</p>
-                  <p className="font-medium">{accountDetails.routingNumber}</p>
+                  <p className="font-medium">{accountDetails.routingNumber || "N/A"}</p>
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -181,7 +177,7 @@ export default function BankAccountDetails({
                         <SelectValue placeholder="USD" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.keys(accountDetails.balances).map((currency) => (
+                        {Object.keys(currencySymbols).map((currency) => (
                           <SelectItem key={currency} value={currency}>
                             {currency}
                           </SelectItem>

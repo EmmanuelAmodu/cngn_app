@@ -22,6 +22,7 @@ export async function offRampPolling() {
   });
 
   while (true) {
+    console.log("Polling for pending off ramps");
     const data = await prisma.transaction.findMany({
       where: { 
         status: 'pending',
@@ -32,7 +33,7 @@ export async function offRampPolling() {
 
     if (!data) {
       console.log("No pending off ramps found");
-      await new Promise((resolve) => setTimeout(resolve, 10000));
+      await new Promise((resolve) => setTimeout(resolve, 30000));
       continue;
     }
 
@@ -88,7 +89,7 @@ export async function offRampPolling() {
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 10000));
+    await new Promise((resolve) => setTimeout(resolve, 30000));
   }
 }
 

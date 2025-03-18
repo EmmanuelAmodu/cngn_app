@@ -21,6 +21,7 @@ export async function crossChainPolling() {
   });
 
   while (true) {
+    console.log("Polling for pending bridges");
     const data = await prisma.transaction.findMany({
       where: { 
         status: 'pending',
@@ -31,7 +32,7 @@ export async function crossChainPolling() {
 
     if (!data) {
       console.log("No pending bridges found");
-      await new Promise((resolve) => setTimeout(resolve, 10000));
+      await new Promise((resolve) => setTimeout(resolve, 30000));
       continue;
     }
 

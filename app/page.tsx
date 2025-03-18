@@ -20,6 +20,21 @@ export default function Home() {
   const { address, chainId } = useAccount();
   const [darkMode, setDarkMode] = useState(false)
 
+  // Initialize polling
+  useEffect(() => {
+    const initializePolling = async () => {
+      try {
+        const response = await fetch('/api/polling');
+        const data = await response.json();
+        console.log('Polling initialization:', data);
+      } catch (error) {
+        console.error('Failed to initialize polling:', error);
+      }
+    };
+
+    initializePolling();
+  }, []);
+
   // Initialize dark mode based on user preference
   useEffect(() => {
     // Always start with dark mode enabled

@@ -30,6 +30,7 @@ let walletClient: WalletClient | null = null;
 
 // Create a public client for a specific chain
 export const getPublicClient = (chainId: number) => {
+  console.log("Getting public client for chain", chainId);
   const chain = getChain(chainId);
   const rpcUrl = chainConfigs[chainId].rpcUrl;
 

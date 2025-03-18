@@ -17,11 +17,10 @@ export interface Transaction {
 
 interface UseTransactionsProps {
   userAddress?: string;
-  chainId?: number;
   type?: 'onramp' | 'offramp' | 'bridge';
 }
 
-export function useTransactions({ userAddress, chainId, type }: UseTransactionsProps) {
+export function useTransactions({ userAddress, type }: UseTransactionsProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,8 +34,7 @@ export function useTransactions({ userAddress, chainId, type }: UseTransactionsP
 
     try {
       const params = new URLSearchParams();
-      params.append('userAddress', userAddress);
-      if (chainId) params.append('chainId', chainId.toString());
+      params.append('userAddress', userAddress.toLowerCase());
       if (type) params.append('type', type);
 
       const response = await fetch(`/api/transactions?${params.toString()}`);
@@ -53,7 +51,7 @@ export function useTransactions({ userAddress, chainId, type }: UseTransactionsP
     } finally {
       setIsLoading(false);
     }
-  }, [userAddress, chainId, type]);
+  }, [userAddress, type]);
 
   useEffect(() => {
     fetchTransactions();

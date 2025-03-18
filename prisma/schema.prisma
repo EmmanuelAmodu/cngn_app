@@ -37,10 +37,10 @@ enum Currency {
 
 model User {
   address     String    @id @map("address")
-  email       String?   @unique
-  firstName   String?   @map("first_name")
-  lastName    String?   @map("last_name")
-  mobileNumber String?  @unique @map("mobile_number")
+  email       String   @unique
+  firstName   String   @map("first_name")
+  lastName    String   @map("last_name")
+  mobileNumber String  @unique @map("mobile_number")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
 
@@ -65,7 +65,6 @@ model VirtualAccount {
 
   @@unique([userAddress, currency], name: "unique_user_currency")
   @@index([userAddress])
-  @@map("virtual_accounts")
 }
 
 model Transaction {

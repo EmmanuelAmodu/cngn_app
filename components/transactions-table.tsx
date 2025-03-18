@@ -33,12 +33,10 @@ interface TransactionsTableProps {
 
 export default function TransactionsTable({
 	userAddress,
-	chainId,
 }: TransactionsTableProps) {
 	const [activeFilter, setActiveFilter] = useState("all");
 	const { transactions, isLoading, error } = useTransactions({
 		userAddress,
-		chainId,
 	});
 
 	// Function to copy text to clipboard

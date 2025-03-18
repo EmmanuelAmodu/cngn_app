@@ -1,10 +1,10 @@
 -- CreateTable
 CREATE TABLE `User` (
     `address` VARCHAR(191) NOT NULL,
-    `email` VARCHAR(191) NULL,
-    `first_name` VARCHAR(191) NULL,
-    `last_name` VARCHAR(191) NULL,
-    `mobile_number` VARCHAR(191) NULL,
+    `email` VARCHAR(191) NOT NULL,
+    `first_name` VARCHAR(191) NOT NULL,
+    `last_name` VARCHAR(191) NOT NULL,
+    `mobile_number` VARCHAR(191) NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
@@ -15,19 +15,20 @@ CREATE TABLE `User` (
 
 -- CreateTable
 CREATE TABLE `VirtualAccount` (
-    `virtual_account_id` VARCHAR(191) NOT NULL,
-    `user_address` VARCHAR(191) NOT NULL,
-    `currency` ENUM('NGN', 'USD', 'KES', 'EUR', 'GBP') NOT NULL,
-    `account_name` VARCHAR(191) NOT NULL,
-    `account_number` VARCHAR(191) NOT NULL,
-    `bank_name` VARCHAR(191) NOT NULL,
-    `reference` VARCHAR(191) NOT NULL,
+    `id` VARCHAR(191) NOT NULL,
+    `userAddress` VARCHAR(191) NOT NULL,
+    `accountNumber` VARCHAR(191) NOT NULL,
+    `accountName` VARCHAR(191) NOT NULL,
+    `bankName` VARCHAR(191) NOT NULL,
+    `routing_number` VARCHAR(191) NULL,
+    `reference` VARCHAR(191) NULL,
+    `currency` ENUM('NGN', 'USD', 'KES', 'EUR', 'GBP') NOT NULL DEFAULT 'NGN',
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at` DATETIME(3) NOT NULL,
 
-    INDEX `idx_virtual_accounts_user_address`(`user_address`),
-    INDEX `idx_virtual_accounts_currency`(`currency`),
-    UNIQUE INDEX `VirtualAccount_user_address_currency_key`(`user_address`, `currency`),
-    PRIMARY KEY (`virtual_account_id`)
+    INDEX `VirtualAccount_userAddress_idx`(`userAddress`),
+    UNIQUE INDEX `VirtualAccount_userAddress_currency_key`(`userAddress`, `currency`),
+    PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -62,10 +63,10 @@ CREATE TABLE `Transaction` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AddForeignKey
-ALTER TABLE `VirtualAccount` ADD CONSTRAINT `VirtualAccount_user_address_fkey` FOREIGN KEY (`user_address`) REFERENCES `User`(`address`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `VirtualAccount` ADD CONSTRAINT `VirtualAccount_userAddress_fkey` FOREIGN KEY (`userAddress`) REFERENCES `User`(`address`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `Transaction` ADD CONSTRAINT `Transaction_user_fkey` FOREIGN KEY (`user_address`) REFERENCES `User`(`address`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `Transaction` ADD CONSTRAINT `Transaction_virtual_account_fkey` FOREIGN KEY (`user_address`, `currency`) REFERENCES `VirtualAccount`(`user_address`, `currency`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `Transaction` ADD CONSTRAINT `Transaction_virtual_account_fkey` FOREIGN KEY (`user_address`, `currency`) REFERENCES `VirtualAccount`(`userAddress`, `currency`) ON DELETE RESTRICT ON UPDATE CASCADE;

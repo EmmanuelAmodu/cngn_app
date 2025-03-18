@@ -29,7 +29,7 @@ export async function offRampPolling() {
 
     if (!data) {
       console.log("No pending off ramps found");
-      await new Promise((resolve) => setTimeout(resolve, 10000));
+      await new Promise((resolve) => setTimeout(resolve, 30000));
       continue;
     }
 
@@ -80,7 +80,7 @@ export async function offRampPolling() {
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 10000));
+    await new Promise((resolve) => setTimeout(resolve, 30000));
   }
 }
 

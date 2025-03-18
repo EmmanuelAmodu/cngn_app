@@ -28,7 +28,7 @@ export async function crossChainPolling() {
 
     if (!data) {
       console.log("No pending bridges found");
-      await new Promise((resolve) => setTimeout(resolve, 10000));
+      await new Promise((resolve) => setTimeout(resolve, 30000));
       continue;
     }
 
@@ -69,7 +69,7 @@ export async function crossChainPolling() {
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 10000));
+    await new Promise((resolve) => setTimeout(resolve, 30000));
   }
 }
 

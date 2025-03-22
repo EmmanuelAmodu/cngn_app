@@ -49,7 +49,7 @@ export const chainConfigs: {
   8453: {
     name: "Base",
     tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
-    contractAddress: "0x0e85B746fbB2d1848a86CE83786E4E778C68228A",
+    contractAddress: "0x05C2f5fF8a6747D8d0c6506Fadb1EC1C8c517901",
     rpcUrl: "https://base.drpc.org/",
     chain: base,
   },

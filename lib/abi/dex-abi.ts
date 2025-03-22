@@ -14,7 +14,7 @@ export const DEX_ABI = [
       {
         name: "adminActions",
         type: "tuple[]",
-        internalType: "struct CNGNService.AdminAction[]",
+        internalType: "struct StableCoinService.AdminAction[]",
         components: [
           { name: "to", type: "address", internalType: "address" },
           { name: "amount", type: "uint256", internalType: "uint256" },
@@ -23,7 +23,7 @@ export const DEX_ABI = [
           {
             name: "actionType",
             type: "uint8",
-            internalType: "enum CNGNService.AdminActionType",
+            internalType: "enum StableCoinService.AdminActionType",
           },
         ],
       },
@@ -44,14 +44,16 @@ export const DEX_ABI = [
   },
   {
     type: "function",
-    name: "bridgeEntryRecords",
-    inputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    outputs: [
-      { name: "to", type: "address", internalType: "address" },
-      { name: "amount", type: "uint256", internalType: "uint256" },
-      { name: "destinationChainId", type: "uint8", internalType: "uint8" },
-      { name: "bridgeId", type: "bytes32", internalType: "bytes32" },
-    ],
+    name: "bridgeEntryCount",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "bridgeEntryIds",
+    inputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
     stateMutability: "view",
   },
   {
@@ -68,14 +70,16 @@ export const DEX_ABI = [
   },
   {
     type: "function",
-    name: "bridgeExitRecords",
-    inputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    outputs: [
-      { name: "to", type: "address", internalType: "address" },
-      { name: "amount", type: "uint256", internalType: "uint256" },
-      { name: "sourceChainId", type: "uint8", internalType: "uint8" },
-      { name: "bridgeId", type: "bytes32", internalType: "bytes32" },
-    ],
+    name: "bridgeExitCount",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "bridgeExitIds",
+    inputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
     stateMutability: "view",
   },
   {
@@ -85,7 +89,7 @@ export const DEX_ABI = [
       {
         name: "actions",
         type: "tuple[]",
-        internalType: "struct CNGNService.Action[]",
+        internalType: "struct StableCoinService.Action[]",
         components: [
           { name: "amount", type: "uint256", internalType: "uint256" },
           { name: "destinationChainId", type: "uint8", internalType: "uint8" },
@@ -93,7 +97,7 @@ export const DEX_ABI = [
           {
             name: "actionType",
             type: "uint8",
-            internalType: "enum CNGNService.ActionType",
+            internalType: "enum StableCoinService.ActionType",
           },
         ],
       },
@@ -113,12 +117,16 @@ export const DEX_ABI = [
   },
   {
     type: "function",
-    name: "offRampRecords",
-    inputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    outputs: [
-      { name: "amount", type: "uint256", internalType: "uint256" },
-      { name: "offRampId", type: "bytes32", internalType: "bytes32" },
-    ],
+    name: "offRampCount",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "offRampIds",
+    inputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
     stateMutability: "view",
   },
   {
@@ -134,13 +142,16 @@ export const DEX_ABI = [
   },
   {
     type: "function",
-    name: "onRampRecords",
-    inputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    outputs: [
-      { name: "to", type: "address", internalType: "address" },
-      { name: "amount", type: "uint256", internalType: "uint256" },
-      { name: "onrampId", type: "bytes32", internalType: "bytes32" },
-    ],
+    name: "onRampCount",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "onRampIds",
+    inputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
     stateMutability: "view",
   },
   {
@@ -166,6 +177,38 @@ export const DEX_ABI = [
   },
   {
     type: "function",
+    name: "recordIds",
+    inputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "records",
+    inputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
+    outputs: [
+      { name: "to", type: "address", internalType: "address" },
+      { name: "amount", type: "uint256", internalType: "uint256" },
+      { name: "chainId", type: "uint8", internalType: "uint8" },
+      { name: "id", type: "bytes32", internalType: "bytes32" },
+      { name: "isAdminAction", type: "bool", internalType: "bool" },
+      {
+        name: "adminActionType",
+        type: "uint8",
+        internalType: "enum StableCoinService.AdminActionType",
+      },
+      {
+        name: "userActionType",
+        type: "uint8",
+        internalType: "enum StableCoinService.ActionType",
+      },
+      { name: "exists", type: "bool", internalType: "bool" },
+      { name: "blockNumber", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "renounceOwnership",
     inputs: [],
     outputs: [],
@@ -185,6 +228,13 @@ export const DEX_ABI = [
     name: "token",
     inputs: [],
     outputs: [{ name: "", type: "address", internalType: "contract IERC20" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "totalRecords",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
     stateMutability: "view",
   },
   {

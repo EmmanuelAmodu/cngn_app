@@ -5,6 +5,7 @@ import { getCustomerTransactions } from "./paystack-client";
 import Bull from "bull";
 import { prisma } from "./database";
 import { randomBytes } from "crypto";
+import { chainConfigs } from "./constants";
 
 const REDIS_URL = process.env.REDIS_URL;
 if (!REDIS_URL) {
@@ -124,7 +125,7 @@ async function processOnRamp(transactionId: string, chainId: number) {
     data: { status: "processing" }
   });
 
-  const { amount, userAddress } = transaction;
+  const { amount, userAddress, onrampId } = transaction;
 
   // Commit transaction on-chain
   const publicClient = getPublicClient(chainId);
@@ -161,6 +162,28 @@ async function processOnRamp(transactionId: string, chainId: number) {
 
     if (balance < amountInWei) {
       throw new Error("Insufficient balance in contract");
+    }
+
+    const [
+      to,
+      amountCon,
+      chainIdCon,
+      id,
+      isAdminAction,
+      adminActionType,
+      userActionType,
+      exists,
+      blockNumber,
+    ] = await publicClient.readContract({
+      address: chainConfigs[chainId].contractAddress as `0x${string}`,
+      abi: DEX_ABI,
+      functionName: "records",
+      args: [onrampId as `0x${string}`],
+    });
+
+    if (exists) {
+      console.log(`Onramp ${onrampId} already committed`);
+      return;
     }
 
     // Execute onramp transaction

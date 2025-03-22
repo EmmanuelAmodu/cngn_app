@@ -23,9 +23,9 @@ export async function offRampPolling() {
 
   while (true) {
     const data = await prisma.offramp.findMany({
-      where: { status: 'pending' },
-      take: 100
-    })
+      where: { status: "pending" },
+      take: 100,
+    });
 
     if (!data) {
       console.log("No pending off ramps found");
@@ -34,47 +34,53 @@ export async function offRampPolling() {
     }
 
     for (const offRamp of data) {
-      const {
-        offrampId,
-        chainId,
-      } = offRamp;
+      const { offrampId, chainId } = offRamp;
       try {
         const publicClient = getPublicClient(chainId);
 
         const decimals = await publicClient.readContract({
           address: getTokenAddress(chainId),
-          functionName: 'decimals',
-          abi: erc20Abi
+          functionName: "decimals",
+          abi: erc20Abi,
         });
 
-        const [amount, offRampId] = await publicClient.readContract({
+        const [
+          to,
+          amount,
+          chainIdCon,
+          offRampId,
+          isAdminAction,
+          adminActionType,
+          userActionType,
+          exists,
+          blockNumber,
+        ] = await publicClient.readContract({
           address: chainConfigs[chainId].contractAddress as `0x${string}`,
           abi: DEX_ABI,
-          functionName: "offRampRecords",
-          args: [
-            offrampId as `0x${string}`,
-          ],
+          functionName: "records",
+          args: [offrampId as `0x${string}`],
         });
 
-        if (Number(amount) === 0) {
+        if (!exists) {
           console.log(`Offramp ${offrampId} not found`);
           continue;
         }
 
-        const amountInt = Number(amount) / (10 ** decimals)
-        await offRampQueue.add(
-          { offRampId },
-          { delay: 5000 }
-        );
+        if (userActionType !== 0) {
+          console.log(`${offrampId} is not an offramp`);
+          continue;
+        }
+
+        const amountInt = Number(amount) / 10 ** decimals;
+        await offRampQueue.add({ offRampId }, { delay: 5000 });
 
         await prisma.offramp.update({
           where: { offrampId },
           data: {
             status: "queued",
             amount: amountInt,
-          }
-        })
-  
+          },
+        });
       } catch (error) {
         console.error(`Error processing bridge ${offrampId}:`, error);
       }
@@ -88,9 +94,9 @@ export async function processWithdrawal(offrampId: string) {
   const offramp = await prisma.offramp.findFirst({
     where: {
       offrampId,
-      status: 'queued'
-    }
-  })
+      status: "queued",
+    },
+  });
 
   if (!offramp) {
     throw new Error("Failed to get offramp details");
@@ -101,15 +107,15 @@ export async function processWithdrawal(offrampId: string) {
       where: { offrampId },
       data: {
         status: "processing",
-      }
-    })
+      },
+    });
 
     // Send NGN to bank account
     const transfer = await initiateTransfer(
       offramp.amount,
       offramp.recipientId,
       offrampId,
-      "Payout from Pepper",
+      "Payout from Pepper"
     );
 
     await prisma.offramp.update({
@@ -117,8 +123,8 @@ export async function processWithdrawal(offrampId: string) {
       data: {
         status: "completed",
         bankTransferReference: transfer.reference,
-      }
-    })
+      },
+    });
 
     console.log(`Withdrawal ${offrampId} processed successfully`);
   } catch (error) {
@@ -128,7 +134,7 @@ export async function processWithdrawal(offrampId: string) {
       where: { offrampId },
       data: {
         status: "failed",
-      }
-    })
+      },
+    });
   }
 }

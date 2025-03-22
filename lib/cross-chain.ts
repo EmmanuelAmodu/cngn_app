@@ -16,15 +16,22 @@ const bridgeQueue = new Bull("bridge_queue", {
 
 export async function crossChainPolling() {
   bridgeQueue.process(async (job) => {
-    const { bridgeId, userAddress, amount, sourceChainId, destinationChainId } = job.data;
-    await processBridgeFrom(bridgeId, userAddress, BigInt(amount), sourceChainId, destinationChainId);
+    const { bridgeId, userAddress, amount, sourceChainId, destinationChainId } =
+      job.data;
+    await processBridgeFrom(
+      bridgeId,
+      userAddress,
+      BigInt(amount),
+      sourceChainId,
+      destinationChainId
+    );
   });
 
   while (true) {
     const data = await prisma.bridge.findMany({
-      where: { status: 'pending' },
+      where: { status: "pending" },
       take: 100,
-    })
+    });
 
     if (!data) {
       console.log("No pending bridges found");
@@ -33,24 +40,45 @@ export async function crossChainPolling() {
     }
 
     for (const bridge of data) {
-      const {
-        bridgeId,
-        sourceChainId,
-      } = bridge;
+      const { bridgeId, sourceChainId } = bridge;
       try {
         const publicClient = getPublicClient(sourceChainId);
 
-        const [userAddress, amount, destinationChainIdFromContract, bridgeIdFromContract] = await publicClient.readContract({
+        const [
+          userAddress,
+          amount,
+          destinationChainIdFromContract,
+          bridgeIdFromContract,
+          isAdminAction,
+          adminActionType,
+          userActionType,
+          exists,
+          blockNumber,
+        ] = await publicClient.readContract({
           address: chainConfigs[sourceChainId].contractAddress as `0x${string}`,
           abi: DEX_ABI,
-          functionName: "bridgeEntryRecords",
-          args: [
-            bridgeId as `0x${string}`,
-          ],
+          functionName: "records",
+          args: [bridgeId as `0x${string}`],
         });
 
+        if (!exists) {
+          console.log(`Bridge ${bridgeId} not found`);
+          continue;
+        }
+
+        if (userActionType !== 1) {
+          console.log(`${bridgeIdFromContract} is not a bridgeEntry`);
+          continue;
+        }
+
         await bridgeQueue.add(
-          { bridgeId: bridgeIdFromContract, userAddress, amount, sourceChainId, destinationChainId: destinationChainIdFromContract },
+          {
+            bridgeId: bridgeIdFromContract,
+            userAddress,
+            amount,
+            sourceChainId,
+            destinationChainId: destinationChainIdFromContract,
+          },
           { delay: 5000 }
         );
 
@@ -61,9 +89,8 @@ export async function crossChainPolling() {
             amount: Number(amount),
             userAddress,
             sourceChainId: sourceChainId,
-          }
-        })
-  
+          },
+        });
       } catch (error) {
         console.error(`Error processing bridge ${bridgeId}:`, error);
       }
@@ -85,7 +112,7 @@ async function sendCNGNOnDestinationChain(
     if (!chainConfig) {
       throw new Error("Unsupported destination chain");
     }
-    
+
     const publicClient = getPublicClient(destinationChainId);
     const walletClient = getWalletClient(destinationChainId);
 
@@ -113,7 +140,7 @@ async function sendCNGNOnDestinationChain(
     const receipt = await publicClient.waitForTransactionReceipt({
       hash,
     });
- 
+
     console.log(
       `Sent cNGN on destination chain ${destinationChainId}: ${hash}`,
       receipt
@@ -136,10 +163,10 @@ async function processBridgeFrom(
   try {
     const data = await prisma.bridge.findFirst({
       where: {
-        bridgeId, 
-        status: "queued"
+        bridgeId,
+        status: "queued",
       },
-    })
+    });
 
     if (!data) {
       console.log(`Bridge ${bridgeId} not found or already processed`);
@@ -148,8 +175,8 @@ async function processBridgeFrom(
 
     await prisma.bridge.update({
       where: { bridgeId },
-      data: { status: "processing" }
-    })
+      data: { status: "processing" },
+    });
 
     // Send cNGN on destination chain
     const result = await sendCNGNOnDestinationChain(
@@ -165,8 +192,8 @@ async function processBridgeFrom(
       data: {
         status: "completed",
         destinationTxHash: result.txHash,
-      }
-    })
+      },
+    });
 
     console.log(`Bridge ${bridgeId} processed successfully`);
   } catch (error) {
@@ -176,7 +203,7 @@ async function processBridgeFrom(
       where: { bridgeId },
       data: {
         status: "failed",
-      }
-    })
+      },
+    });
   }
 }

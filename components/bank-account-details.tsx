@@ -2,18 +2,18 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Copy, Loader2, CreditCardIcon } from "lucide-react"
+import { CreditCardIcon } from "lucide-react"
 import { fetchVirtualAccountAPI } from "@/lib/api"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { type Address, erc20Abi } from "viem"
 import { getPublicClient } from "@/lib/blockchain"
 import { chainConfigs } from "@/lib/constants"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useToast } from "@/hooks/use-toast"
 
 const currencySymbols: Record<string, string> = {
   NGN: "₦",
+  USD: "$",
 }
 
 interface AccountDetails {
@@ -41,35 +41,42 @@ export default function BankAccountDetails({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [selectedCurrency, setSelectedCurrency] = useState<string>("NGN");
   const [balance, setBalance] = useState<number>(0);
+  const { toast } = useToast();
+
+  const fetchAccountDetails = useCallback(async (currency: string) => {
+    if (!userAddress) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetchVirtualAccountAPI(userAddress?.toLowerCase(), currency);
+      if (response) {
+        console.log(response);
+        setAccountDetails(response);
+      } else {
+        setAccountDetails(null);
+        toast({
+          title: "Account Not Found",
+          description: `No ${currency} virtual account found. Please create one to proceed.`,
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching account details:", err);
+      setError(
+        (err as { message: string }).message ||
+          "Failed to fetch account details. Please try again.",
+      );
+      setAccountDetails(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userAddress, toast]);
 
   useEffect(() => {
-    const fetchAccountDetails = async () => {
-      if (!userAddress) return;
-
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetchVirtualAccountAPI(userAddress?.toLowerCase());
-        if (response) {
-          console.log(response);
-          setAccountDetails(response);
-        } else {
-          throw new Error("Failed to fetch account details");
-        }
-      } catch (err) {
-        console.error("Error fetching account details:", err);
-        setError(
-          (err as { message: string }).message ||
-            "Failed to fetch account details. Please try again.",
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchAccountDetails();
-  }, [userAddress]);
+    fetchAccountDetails(selectedCurrency);
+  }, [fetchAccountDetails, selectedCurrency]);
 
   const getBalance = useCallback(async (chainId: number, address: Address, tokenAddress: Address) => {
     const publicClient = getPublicClient(chainId);
@@ -124,22 +131,13 @@ export default function BankAccountDetails({
                 <p className="text-lg font-bold">{accountDetails.accountName}</p>
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium">{accountDetails.accountNumber}</p>
-                  {/* <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      copyToClipboard(accountDetails.accountNumber, "accountNumber")
-                    }
-                  >
-                    {copiedField === "accountNumber" ? "Copied!" : <Copy className="h-4 w-4" />}
-                  </Button> */}
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-6 w-32" />
-                <Skeleton className="h-4 w-28" />
+              <div className="text-muted-foreground">
+                <p className="text-sm">No Account</p>
+                <p className="text-lg font-bold">Create {selectedCurrency} Account</p>
+                <p className="text-sm">Select currency to create account</p>
               </div>
             )}
           </div>
@@ -174,7 +172,7 @@ export default function BankAccountDetails({
                     <p className="text-muted-foreground">Balance</p>
                     <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
                       <SelectTrigger className="h-6 w-20 text-xs">
-                        <SelectValue placeholder="USD" />
+                        <SelectValue placeholder="Select currency" />
                       </SelectTrigger>
                       <SelectContent>
                         {Object.keys(currencySymbols).map((currency) => (
@@ -193,17 +191,34 @@ export default function BankAccountDetails({
               </>
             ) : (
               <>
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-4 w-24" />
+                <div className="text-muted-foreground">
+                  <p className="text-muted-foreground">Bank</p>
+                  <p className="font-medium">-</p>
                 </div>
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-4 w-24" />
+                <div className="text-muted-foreground">
+                  <p className="text-muted-foreground">Routing</p>
+                  <p className="font-medium">-</p>
                 </div>
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-4 w-24" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-muted-foreground">Balance</p>
+                    <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
+                      <SelectTrigger className="h-6 w-20 text-xs">
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(currencySymbols).map((currency) => (
+                          <SelectItem key={currency} value={currency}>
+                            {currency}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="font-medium text-primary">
+                    {currencySymbols[selectedCurrency] || ""}
+                    {balance}
+                  </p>
                 </div>
               </>
             )}

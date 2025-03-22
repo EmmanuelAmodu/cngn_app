@@ -1,53 +1,61 @@
 import { NextResponse } from "next/server";
 import { createCustomer, createCustomerVirtualAccount } from "@/lib/paystack-client";
+import { createCustomer as createCheckbookCustomer, createVirtualAccount } from "@/lib/checkbook-client";
 import { prisma } from "@/lib/database";
+import type { Currency } from "@prisma/client";
 
 export async function GET(
   request: Request,
   { params }: { params: { address: string } }
 ) {
+  const { searchParams } = new URL(request.url);
+  const currency = searchParams.get('currency') || 'NGN';
+
+  const data = await prisma.virtualAccount.findFirst({
+    where: {
+      userAddress: params.address,
+      currency: currency as Currency
+    }
+  })
+
+  if (data) {
+    return NextResponse.json({
+      success: true,
+      data
+    });
+  }
+
+  const user = await prisma.user.findFirst({
+    where: {
+      address: params.address
+    }
+  })
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
   try {
-    const data = await prisma.virtualAccount.findFirst({
-      where: {
-        userAddress: params.address
-      }
-    })
-
-    if (data) {
-      return NextResponse.json({
-        success: true,
-        data
-      });
-    }
-
-    const user = await prisma.user.findFirst({
-      where: {
-        address: params.address
-      }
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
     const virtualAccount = await getOrCreateAccount(
       user.firstName,
       user.lastName,
       user.email,
       user.mobileNumber,
-      params.address
+      params.address,
+      currency as Currency
     )
 
     if (virtualAccount) {
       return NextResponse.json({
         success: true,
-        data
+        data: virtualAccount
       });
     }
 
     return NextResponse.json({ error: "Account not found" }, { status: 404 });
   } catch (error) {
     console.error("Error fetching deposit volume:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -96,7 +104,8 @@ export async function POST(request: Request) {
       lastName,
       email,
       mobileNumber,
-      userAddress
+      userAddress,
+      'NGN' as Currency
     );
 
     console.log("Saving to Database:", responseData);
@@ -122,35 +131,68 @@ async function getOrCreateAccount(
   lastName: string,
   email: string,
   mobileNumber: string,
-  userAddress: string
+  userAddress: string,
+  currency: Currency
 ) {
   const accountData = await prisma.virtualAccount.findFirst({
-    where: { userAddress }
-  })
-
-  console.log('Account details from db:', accountData)
-
-  if (accountData) return accountData;
-
-  const createCustomerResponseData = await createCustomer({
-    email,
-    phone: mobileNumber,
-    firstName,
-    lastName
-  });
-
-  const responseData = await createCustomerVirtualAccount(createCustomerResponseData.id);
-
-  const creationAccountData = await prisma.virtualAccount.create({
-    data: {
+    where: { 
       userAddress,
-      accountNumber: responseData.account_number,
-      bankName: responseData.bank.name,
-      accountName: responseData.account_name,
-      reference: createCustomerResponseData.id.toString(),
-      currency: "NGN",
+      currency
     }
   })
-
-  return creationAccountData;
+  
+  console.log('Account details from db:', accountData)
+  
+  if (accountData) return accountData;
+  
+  if (currency === 'NGN') {
+    const createCustomerResponseData = await createCustomer({
+      email,
+      phone: mobileNumber,
+      firstName,
+      lastName
+    });
+  
+    const responseData = await createCustomerVirtualAccount(createCustomerResponseData.id);
+  
+    const creationAccountData = await prisma.virtualAccount.create({
+      data: {
+        userAddress,
+        accountNumber: responseData.account_number,
+        bankName: responseData.bank.name,
+        accountName: responseData.account_name,
+        reference: createCustomerResponseData.id.toString(),
+        currency,
+      }
+    })
+  
+    return creationAccountData;
+  }
+  
+  if (currency === 'USD') {
+    const customer = await createCheckbookCustomer({
+      email,
+      firstName,
+      lastName,
+      phone: mobileNumber,
+    });
+  
+    const account = await createVirtualAccount(customer.id);
+  
+    const creationAccountData = await prisma.virtualAccount.create({
+      data: {
+        userAddress,
+        accountNumber: account.accountNumber,
+        bankName: account.bankName,
+        accountName: account.accountName,
+        routingNumber: account.routingNumber,
+        reference: account.id,
+        currency,
+      }
+    })
+  
+    return creationAccountData;
+  }
+  
+  throw new Error(`Unsupported currency: ${currency}`);
 }

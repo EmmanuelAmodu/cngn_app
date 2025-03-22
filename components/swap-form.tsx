@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { ArrowRightLeftIcon, ArrowDownIcon } from "lucide-react"
+import { ArrowRightLeftIcon, ArrowUpDownIcon as ArrowsUpDownIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -78,18 +78,44 @@ export default function SwapForm() {
       setSwapAmount("")
       setEstimatedReceive("0.00")
       setIsSubmitting(false)
-
     }, 1500)
+  }
+
+  // Set max amount for swap
+  const handleSetMaxAmount = () => {
+    if (fromCurrency) {
+      const maxAmount = accountInfo.balances[fromCurrency as keyof typeof accountInfo.balances]
+      setSwapAmount(maxAmount.toString())
+    }
+  }
+
+  // Swap currencies
+  const handleSwapCurrencies = () => {
+    if (fromCurrency && toCurrency) {
+      // Store current values
+      const tempFromCurrency = fromCurrency
+      const tempToCurrency = toCurrency
+      const tempEstimatedReceive = estimatedReceive
+
+      // Swap currencies
+      setFromCurrency(tempToCurrency)
+      setToCurrency(tempFromCurrency)
+
+      // Swap amounts (estimated becomes input, input becomes empty)
+      setSwapAmount(tempEstimatedReceive)
+    }
   }
 
   return (
     <form onSubmit={handleFormSubmit}>
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="from-currency">From</Label>
-          <div className="flex gap-2">
+      <div className="space-y-4">
+        <div>
+          <Label htmlFor="from-currency" className="text-sm mb-1.5 block">
+            From
+          </Label>
+          <div className="grid grid-cols-[120px_1fr] gap-2">
             <Select value={fromCurrency} onValueChange={setFromCurrency} required>
-              <SelectTrigger id="from-currency" className="w-32">
+              <SelectTrigger id="from-currency">
                 <SelectValue placeholder="Currency" />
               </SelectTrigger>
               <SelectContent>
@@ -100,7 +126,7 @@ export default function SwapForm() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="relative flex-1">
+            <div className="relative">
               <span className="absolute left-2.5 top-2.5 text-muted-foreground">
                 {fromCurrency ? currencySymbols[fromCurrency] || "" : ""}
               </span>
@@ -108,34 +134,56 @@ export default function SwapForm() {
                 id="swap-amount"
                 type="number"
                 placeholder="0.00"
-                className={fromCurrency ? "pl-7" : ""}
+                className={fromCurrency ? "pl-7 pr-16" : "pr-16"}
                 value={swapAmount}
                 onChange={(e) => setSwapAmount(e.target.value)}
                 min="0.01"
                 step="0.01"
                 required
               />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-2 text-xs font-medium text-primary hover:text-primary/80"
+                onClick={handleSetMaxAmount}
+                disabled={!fromCurrency}
+              >
+                MAX
+              </Button>
             </div>
           </div>
           {fromCurrency && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-1">
               Available: {currencySymbols[fromCurrency] || ""}
               {accountInfo.balances[fromCurrency as keyof typeof accountInfo.balances].toLocaleString()}
             </p>
           )}
         </div>
 
-        <div className="flex justify-center">
-          <div className="bg-muted dark:bg-muted/30 rounded-full p-2">
-            <ArrowDownIcon className="h-4 w-4 text-muted-foreground" />
-          </div>
+        <div className="flex items-center">
+          <div className="h-px bg-border flex-grow" />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="mx-2 h-8 w-8 rounded-full"
+            onClick={handleSwapCurrencies}
+            disabled={!fromCurrency || !toCurrency}
+          >
+            <ArrowsUpDownIcon className="h-4 w-4" />
+            <span className="sr-only">Swap currencies</span>
+          </Button>
+          <div className="h-px bg-border flex-grow" />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="to-currency">To</Label>
-          <div className="flex gap-2">
+        <div>
+          <Label htmlFor="to-currency" className="text-sm mb-1.5 block">
+            To
+          </Label>
+          <div className="grid grid-cols-[120px_1fr] gap-2">
             <Select value={toCurrency} onValueChange={setToCurrency} required>
-              <SelectTrigger id="to-currency" className="w-32">
+              <SelectTrigger id="to-currency">
                 <SelectValue placeholder="Currency" />
               </SelectTrigger>
               <SelectContent>
@@ -146,23 +194,27 @@ export default function SwapForm() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="relative flex-1">
+            <div className="relative">
               <span className="absolute left-2.5 top-2.5 text-muted-foreground">
                 {toCurrency ? currencySymbols[toCurrency] || "" : ""}
               </span>
               <Input
                 id="estimated-receive"
                 value={estimatedReceive}
-                className={toCurrency ? "pl-7" : ""}
+                className={toCurrency ? "pl-7 bg-muted/20" : "bg-muted/20"}
                 readOnly
               />
             </div>
           </div>
           {fromCurrency && toCurrency && swapAmount && (
-            <p className="text-xs text-muted-foreground">
-              Rate: 1 {fromCurrency} ≈{" "}
-              {(Number.parseFloat(estimatedReceive) / Number.parseFloat(swapAmount)).toFixed(4)} {toCurrency}
-            </p>
+            <div className="flex justify-between mt-1">
+              <p className="text-xs text-muted-foreground">
+                Rate: 1 {fromCurrency} ≈{" "}
+                {(Number.parseFloat(estimatedReceive) / Number.parseFloat(swapAmount)).toFixed(4)}{" "}
+                {toCurrency}
+              </p>
+              <p className="text-xs text-muted-foreground">Fee: 0.1%</p>
+            </div>
           )}
         </div>
       </div>
@@ -181,4 +233,3 @@ export default function SwapForm() {
     </form>
   )
 }
-

@@ -98,16 +98,15 @@ export interface FundTransferResponse {
   }
 }
 
-export const fetchVirtualAccountAPI = async (userAddress: string) => {
+export const fetchVirtualAccountAPI = async (userAddress: string, currency: string = 'NGN') => {
   try {
-    const response = await fetch(`/api/virtual-account/${userAddress}`, {
+    const response = await fetch(`/api/virtual-account/${userAddress}?currency=${currency}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
     })
   
-    // console.log(response.test())
     if (response.ok) {
       const account = await response.json()
       return account.data

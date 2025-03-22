@@ -1,7 +1,7 @@
 import { erc20Abi } from "viem";
 import { DEX_ABI } from "./abi/dex-abi";
 import { getPublicClient, getTokenAddress } from "./blockchain";
-import { chainConfigs } from "./constants";
+import { chainConfigs, POLLING_DELAY } from "./constants";
 import { initiateTransfer } from "./paystack-client";
 import Bull from "bull";
 import { prisma } from "./database";
@@ -33,7 +33,7 @@ export async function offRampPolling() {
 
     if (!data) {
       console.log("No pending off ramps found");
-      await new Promise((resolve) => setTimeout(resolve, 30000));
+      await new Promise((resolve) => setTimeout(resolve, POLLING_DELAY));
       continue;
     }
 
@@ -89,7 +89,7 @@ export async function offRampPolling() {
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 30000));
+    await new Promise((resolve) => setTimeout(resolve, POLLING_DELAY));
   }
 }
 

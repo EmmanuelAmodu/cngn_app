@@ -1,7 +1,7 @@
 import { erc20Abi, type TransactionReceipt, type Address, type Hex } from "viem";
 import { DEX_ABI } from "./abi/dex-abi";
 import { getPublicClient, getWalletClient, getContractAddress, getTokenAddress, getChain } from "./blockchain";
-import { chainConfigs } from "./constants";
+import { chainConfigs, POLLING_DELAY } from "./constants";
 import { getCustomerTransactions } from "./paystack-client";
 import Bull from "bull";
 import { prisma } from "./database";
@@ -61,7 +61,7 @@ export async function onRampPolling() {
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 30000));
+    await new Promise((resolve) => setTimeout(resolve, POLLING_DELAY));
   }
 }
 

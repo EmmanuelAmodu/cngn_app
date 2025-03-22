@@ -1,19 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import OnrampForm from "@/components/onramp-form"
-import OfframpForm from "@/components/offramp-form"
-import BridgeForm from "@/components/bridge-form"
 import ConnectWallet from "@/components/connect-wallet"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { Stats } from "@/components/stats"
 import { useAccount } from "wagmi"
 import { MoonIcon, SunIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import BankAccountDetails from "@/components/bank-account-details"
 import TransactionsTable from "@/components/transactions-table"
+import TransactionsOperations from "@/components/transaction-operations"
 
 export default function Home() {
   // Use wagmi hooks to get the connected address and current chain
@@ -72,6 +66,8 @@ export default function Home() {
         userAddress={address as `0x${string}`}
         chainId={chainId || 1}
       />
+
+      <TransactionsOperations />
 
       <TransactionsTable
         userAddress={address as `0x${string}`}

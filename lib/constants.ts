@@ -80,3 +80,4 @@ export const API_ENDPOINTS = {
 
 // Token decimals
 export const TOKEN_DECIMALS = 18;
+export const POLLING_DELAY = 30000;

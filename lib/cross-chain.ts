@@ -1,5 +1,5 @@
 import type { Hash } from "viem";
-import { chainConfigs } from "@/lib/constants";
+import { chainConfigs, POLLING_DELAY } from "@/lib/constants";
 import { DEX_ABI } from "./abi/dex-abi";
 import Bull from "bull";
 import { getPublicClient, getWalletClient } from "./blockchain";
@@ -32,7 +32,7 @@ export async function crossChainPolling() {
 
     if (!data) {
       console.log("No pending bridges found");
-      await new Promise((resolve) => setTimeout(resolve, 30000));
+      await new Promise((resolve) => setTimeout(resolve, POLLING_DELAY));
       continue;
     }
 
@@ -78,7 +78,7 @@ export async function crossChainPolling() {
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 10000));
+    await new Promise((resolve) => setTimeout(resolve, POLLING_DELAY));
   }
 }
 

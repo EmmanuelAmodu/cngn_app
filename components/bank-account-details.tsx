@@ -10,6 +10,7 @@ import { getPublicClient } from "@/lib/blockchain"
 import { chainConfigs } from "@/lib/constants"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
+import { formatUnits } from "viem"
 
 const currencySymbols: Record<string, string> = {
   NGN: "₦",
@@ -78,28 +79,32 @@ export default function BankAccountDetails({
     fetchAccountDetails(selectedCurrency);
   }, [fetchAccountDetails, selectedCurrency]);
 
-  const getBalance = useCallback(async (chainId: number, address: Address, tokenAddress: Address) => {
-    const publicClient = getPublicClient(chainId);
-    const decimals = await publicClient.readContract({
-      address: chainConfigs[chainId].tokenAddress as `0x${string}`,
-      abi: erc20Abi,
-      functionName: "decimals",
-    });
-  
-    const balance = await publicClient.readContract({
-      address: chainConfigs[chainId].tokenAddress as `0x${string}`,
-      abi: erc20Abi,
-      functionName: "balanceOf",
-      args: [address],
-    });
+  const getBalance = useCallback(async (currency: string) => {
+    try {
+      if (!userAddress || !chainId) return;
 
-    setBalance(Number(balance) / (10 ** Number(decimals)));
-  }, []);
+      const tokenAddress = currency === 'USD' 
+        ? chainConfigs[chainId].usdcAddress 
+        : chainConfigs[chainId].cngnAddress;
+
+      const publicClient = getPublicClient(chainId);
+      const balance = await publicClient.readContract({
+        address: tokenAddress,
+        abi: erc20Abi,
+        functionName: "balanceOf",
+        args: [userAddress],
+      });
+
+      setBalance(Number(formatUnits(balance, 6))); // Convert to number for state
+    } catch (error) {
+      console.error("Error fetching balance:", error);
+    }
+  }, [userAddress, chainId]);
 
   useEffect(() => {
     if (!chainId || !userAddress) return;
-    getBalance(chainId, userAddress, chainConfigs[chainId].tokenAddress as Address);
-  }, [chainId, userAddress, getBalance]);
+    getBalance(selectedCurrency);
+  }, [chainId, userAddress, getBalance, selectedCurrency]);
 
   const copyToClipboard = async (text: string, field: string) => {
     try {

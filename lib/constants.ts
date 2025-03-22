@@ -12,10 +12,11 @@ import {
 export const chainConfigs: {
   [key: number]: {
     name: string;
-    tokenAddress: Address;
+    cngnAddress: Address;
     contractAddress: Address;
     rpcUrl: string;
     chain: Chain;
+    usdcAddress: Address;
   };
 } = {
   // 1: {
@@ -48,10 +49,11 @@ export const chainConfigs: {
   // },
   8453: {
     name: "Base",
-    tokenAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
+    cngnAddress: "0x46C85152bFe9f96829aA94755D9f915F9B10EF5F",
     contractAddress: "0x0e85B746fbB2d1848a86CE83786E4E778C68228A",
     rpcUrl: "https://base.drpc.org/",
     chain: base,
+    usdcAddress: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
   },
 };
 

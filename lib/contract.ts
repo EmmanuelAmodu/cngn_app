@@ -114,7 +114,7 @@ export const approveTokenSpend = async (
     const walletClient = await getWalletClient(chainId);
     if (!walletClient.account) throw new Error("Account not found");
 
-    const tokenAddress = chainConfigs[chainId].tokenAddress;
+    const tokenAddress = chainConfigs[chainId].cngnAddress;
     if (!tokenAddress)
       throw new Error("Token address not found in chain configuration");
 
@@ -214,7 +214,7 @@ export const approveTokens = async (
 ): Promise<string> => {
   try {
     const walletClient = await getWalletClient(chainId);
-    const tokenAddress = chainConfigs[chainId]?.tokenAddress;
+    const tokenAddress = chainConfigs[chainId]?.cngnAddress;
     if (!tokenAddress)
       throw new Error("Token address not found in chain configuration");
 

@@ -206,13 +206,13 @@ export default function OnrampForm({ address, chainId }: OnrampFormProps) {
 	const getBalance = async (chainId: number, address: Address) => {
 		const publicClient = getPublicClient(chainId);
 		const decimals = await publicClient.readContract({
-			address: chainConfigs[chainId].tokenAddress as `0x${string}`,
+			address: chainConfigs[chainId].cngnAddress as `0x${string}`,
 			abi: erc20Abi,
 			functionName: "decimals",
 		});
 	
 		const balance = await publicClient.readContract({
-			address: chainConfigs[chainId].tokenAddress as `0x${string}`,
+			address: chainConfigs[chainId].cngnAddress as `0x${string}`,
 			abi: erc20Abi,
 			functionName: "balanceOf",
 			args: [address],

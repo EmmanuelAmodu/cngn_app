@@ -4,7 +4,7 @@ import { prisma } from "@/lib/database"
 
 export async function POST(request: Request) {
   try {
-    const { amount, destinationChain, userAddress, sourceChainId, sourceTxHash } = await request.json()
+    const { amount, destinationChain, userAddress, sourceChainId, currency } = await request.json()
 
     if (!amount || !sourceChainId || !destinationChain || !userAddress) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
         amount: Number.parseInt(amount),
         sourceChainId,
         destinationChainId: destinationChain,
-        currency: 'NGN'
+        currency
       }
     })
 

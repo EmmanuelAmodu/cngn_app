@@ -5,7 +5,7 @@ import { prisma } from "@/lib/database"
 
 export async function POST(request: Request) {
   try {
-    const { userAddress, bankAccount, chainId, bankCode } = await request.json()
+    const { userAddress, bankAccount, chainId, bankCode, accountName } = await request.json()
 
     if (!userAddress || !bankAccount) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
